@@ -199,107 +199,6 @@ function BentoCard({ children, className = '', span = '' }: { children: React.Re
   );
 }
 
-/* ═══════ INLINE CTA BANNER ═══════ */
-function InlineCta({ headline, sub, dark = false }: { headline: string; sub: string; dark?: boolean }) {
-  const [email, setEmail] = useState('');
-  const [done, setDone] = useState(false);
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.includes('@')) return;
-    setDone(true);
-  };
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-      className={`rounded-2xl p-8 md:p-12 ${dark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 border border-neutral-200'}`}>
-      <AnimatePresence mode="wait">
-        {done ? (
-          <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-2">
-            <CheckCircle2 size={28} className="text-green-500 mx-auto mb-3" />
-            <p className="text-lg font-bold">You&apos;re on the list.</p>
-            <p className={`text-sm mt-1 ${dark ? 'text-neutral-500' : 'text-neutral-400'}`}>We&apos;ll be in touch at {email}</p>
-          </motion.div>
-        ) : (
-          <motion.div key="form" exit={{ opacity: 0 }}>
-            <h3 className="text-[clamp(1.3rem,2.5vw,2rem)] font-extrabold tracking-tight mb-2">{headline}</h3>
-            <p className={`text-sm mb-6 ${dark ? 'text-neutral-400' : 'text-neutral-500'}`}>{sub}</p>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg">
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required
-                className={`flex-1 px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
-                  dark ? 'bg-white/10 border border-white/10 text-white placeholder-neutral-600' : 'bg-white border border-neutral-200 text-neutral-900 placeholder-neutral-400'
-                }`} />
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit"
-                className="px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
-                Get Early Access
-              </motion.button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-/* ═══════ STICKY BOTTOM BAR ═══════ */
-function StickyBar() {
-  const [visible, setVisible] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [email, setEmail] = useState('');
-  const [done, setDone] = useState(false);
-  useEffect(() => {
-    const h = () => {
-      const scrolled = window.scrollY > window.innerHeight * 0.8;
-      const nearBottom = window.scrollY + window.innerHeight > document.body.scrollHeight - 600;
-      setVisible(scrolled && !nearBottom);
-    };
-    window.addEventListener('scroll', h, { passive: true });
-    return () => window.removeEventListener('scroll', h);
-  }, []);
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.includes('@')) return;
-    setDone(true);
-    setTimeout(() => setDismissed(true), 2000);
-  };
-  if (dismissed) return null;
-  return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-xl border-t border-white/10 py-3 px-6"
-        >
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-            <div className="hidden sm:block">
-              <p className="text-white text-sm font-bold">Stop leaving money on the table.</p>
-              <p className="text-neutral-500 text-xs">Join 4,200+ getting their money back.</p>
-            </div>
-            {done ? (
-              <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
-                <CheckCircle2 size={16} /> You&apos;re in!
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex gap-2 flex-1 sm:flex-none">
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required
-                  className="flex-1 sm:w-56 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
-                <motion.button whileTap={{ scale: 0.97 }} type="submit"
-                  className="px-5 py-2 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
-                  Get Access
-                </motion.button>
-              </form>
-            )}
-            <button onClick={() => setDismissed(true)} className="text-neutral-600 hover:text-neutral-400 transition-colors p-1">
-              <X size={16} strokeWidth={2} />
-            </button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 /* ═══════ SCENARIO CARD ═══════ */
 function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
   icon: React.ElementType; label: string; title: string; detail: string; amount: string; delay: number;
@@ -521,7 +420,7 @@ export default function V2() {
 
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
-      <StickyBar />
+      {/* Clean — no gimmicky overlays */}
       <ScrollBar />
       <Nav onLogoClick={() => {}} isDark={isDark} />
 
@@ -618,17 +517,6 @@ export default function V2() {
         </div>
       </section>
 
-      {/* ═══════ CTA — after problem ═══════ */}
-      <section className="px-6 pb-20">
-        <div className="max-w-7xl mx-auto">
-          <InlineCta
-            headline="Stop losing money you didn't know you had."
-            sub="Get early access to Pocketed. We'll scan your first 30 days of purchases for free."
-            dark
-          />
-        </div>
-      </section>
-
       {/* ═══════ 2b. SCROLL HIGHLIGHT — THE SYSTEMIC STATEMENT ═══════ */}
       <section className="px-6 pb-32">
         <div className="max-w-5xl mx-auto">
@@ -694,24 +582,6 @@ export default function V2() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ═══════ CTA — after how it works ═══════ */}
-      <section className="px-6 pb-32">
-        <div className="max-w-7xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="rounded-2xl border border-orange-200 bg-orange-50/50 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
-            <div>
-              <h3 className="text-[clamp(1.3rem,2.5vw,2rem)] font-extrabold tracking-tight text-neutral-900 mb-2">
-                See what you&apos;re owed — in 30 seconds.
-              </h3>
-              <p className="text-sm text-neutral-500">Connect your inbox. We do the rest. No credit card, no commitment.</p>
-            </div>
-            <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-orange-500 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap shrink-0 shadow-lg shadow-orange-500/20">
-              Get Early Access <ArrowRight size={14} strokeWidth={2} />
-            </Magnetic>
-          </motion.div>
         </div>
       </section>
 
@@ -807,16 +677,6 @@ export default function V2() {
         </div>
       </section>
 
-      {/* ═══════ CTA — after testimonials ═══════ */}
-      <section className="px-6 pb-32">
-        <div className="max-w-7xl mx-auto">
-          <InlineCta
-            headline="Join Jake, Priya, Marcus, and 4,200+ others."
-            sub="Average user recovers $347 in their first month. What are you leaving on the table?"
-          />
-        </div>
-      </section>
-
       {/* ═══════ 6. PRICING ═══════ */}
       <section id="pricing" className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
@@ -856,25 +716,6 @@ export default function V2() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* ═══════ GUARANTEE BANNER ═══════ */}
-      <section className="px-6 pb-32">
-        <div className="max-w-7xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="rounded-2xl border border-green-200 bg-green-50/50 p-8 md:p-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-              <Shield size={24} strokeWidth={1.5} className="text-green-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-extrabold text-neutral-900 mb-1">60-day money-back guarantee</h3>
-              <p className="text-sm text-neutral-500">If Pocketed doesn&apos;t recover more than your subscription cost, we refund every cent. No forms, no questions. You literally can&apos;t lose.</p>
-            </div>
-            <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-green-500 transition-colors whitespace-nowrap shrink-0">
-              Try Risk-Free <ArrowRight size={14} strokeWidth={2} />
-            </Magnetic>
-          </motion.div>
         </div>
       </section>
 
