@@ -199,6 +199,36 @@ function BentoCard({ children, className = '', span = '' }: { children: React.Re
   );
 }
 
+/* ═══════ SCENARIO CARD ═══════ */
+function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
+  icon: React.ElementType; label: string; title: string; detail: string; amount: string; delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.5, delay }}
+      className="group"
+    >
+      <div className="border border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-100 transition-all duration-300 h-full">
+        <div className="flex items-start justify-between mb-5">
+          <div className="w-10 h-10 rounded-2xl bg-red-50 group-hover:bg-red-100 transition-colors flex items-center justify-center">
+            <Icon size={18} strokeWidth={1.5} className="text-red-500" />
+          </div>
+          <span className="text-[11px] font-bold text-red-500/70 bg-red-50 px-2.5 py-1 rounded-full uppercase tracking-wider">{label}</span>
+        </div>
+        <h3 className="text-base font-bold text-neutral-900 mb-2">{title}</h3>
+        <p className="text-sm text-neutral-500 leading-relaxed mb-5">{detail}</p>
+        <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+          <span className="text-xs text-neutral-400">Money left behind</span>
+          <span className="text-2xl font-extrabold text-red-500">{amount}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ═══════ HERO PRODUCT VISUAL ═══════ */
 
 function HeroVisual() {
@@ -432,22 +462,74 @@ export default function V2() {
         </div>
       </section>
 
-      {/* ═══════ 2. BENTO — PROBLEM + STATS ═══════ */}
-      <section className="px-6 pb-32">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Large card — scroll highlight text */}
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="col-span-2 row-span-2">
-            <BentoCard className="h-full flex flex-col justify-center" span="">
-              <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-4">The problem</p>
-              <ScrollHighlight
-                text="Americans leave $48 billion on the table every single year. Not because they don't care — because no one tells them. Price adjustments expire. Return windows close. Free trials convert to paid. We built Pocketed to fix that."
-                className="text-[clamp(1.1rem,2.2vw,1.6rem)] font-semibold leading-[1.45] tracking-tight"
-              />
-            </BentoCard>
+      {/* ═══════ 2. THE PROBLEM — SCENARIO CARDS ═══════ */}
+      <section className="px-6 pb-20">
+        <div className="max-w-7xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
+            <h2 className="text-[clamp(2.5rem,6vw,5rem)] font-extrabold tracking-[-0.04em] leading-[0.92] mb-5">
+              This is happening<br />to you <span className="text-neutral-300">right now.</span>
+            </h2>
+            <p className="text-neutral-500 max-w-xl text-lg leading-relaxed">
+              Every month, money slips through the cracks. Not because you&apos;re careless — because the system is designed to make you forget.
+            </p>
           </motion.div>
 
-          {/* Stat cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-12 mb-12">
+            <ScenarioCard
+              icon={TrendingDown}
+              label="Price drop"
+              title="You bought headphones for $348."
+              detail="Two days later, the price dropped to $299. Amazon doesn't tell you. The 30-day price adjustment window ticks away in silence."
+              amount="-$48"
+              delay={0}
+            />
+            <ScenarioCard
+              icon={CreditCard}
+              label="Forgotten sub"
+              title="That free trial from March?"
+              detail="It converted to $17.99/mo four months ago. You haven't opened the app once. That's $72 gone — and counting every 30 days."
+              amount="-$72"
+              delay={0.1}
+            />
+            <ScenarioCard
+              icon={Shield}
+              label="Expired warranty"
+              title="Your laptop has a dead pixel."
+              detail="The manufacturer warranty expires in 11 days. You've been meaning to deal with it. You won't. A $1,200 replacement, gone."
+              amount="-$1,200"
+              delay={0.2}
+            />
+          </div>
+
+          {/* Running total */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 md:p-10 rounded-2xl border border-red-200 bg-red-50/50">
+            <div>
+              <p className="text-base font-bold text-red-700 mb-1">Just from these three scenarios alone</p>
+              <p className="text-sm text-red-500/70">And this is one person, one month. Multiply by every purchase you&apos;ve ever made.</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[clamp(3rem,6vw,5rem)] font-extrabold text-red-600 tracking-tight leading-none">-$<Counter value={1320} /></p>
+              <p className="text-xs text-red-400 mt-2">lost in a single month</p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════ 2b. SCROLL HIGHLIGHT — THE SYSTEMIC STATEMENT ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-5xl mx-auto">
+          <ScrollHighlight
+            text="Every year, Americans leave $48 billion on the table. Not because they don't care — because no one tells them. Price adjustments expire. Return windows close. Free trials convert. Warranties lapse. Companies are counting on you to forget. We built Pocketed so you never have to."
+            className="text-[clamp(1.8rem,4vw,3.2rem)] font-bold leading-[1.35] tracking-tight"
+          />
+        </div>
+      </section>
+
+      {/* ═══════ 2c. STATS ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { val: 48, pre: '$', suf: 'B+', label: 'Left on the table by U.S. consumers', accent: true },
             { val: 200, suf: '+', label: 'Retailers and services monitored', accent: false },
