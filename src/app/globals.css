@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* bg transitions handled by scroll-driven DarkZone components */
+}
+
+::selection {
+  background-color: #F97316;
+  color: #fff;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #fafafa; }
+::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
+
+/* Dot grid pattern */
+.dot-grid {
+  background-image: radial-gradient(circle, #e5e5e5 1px, transparent 1px);
+  background-size: 24px 24px;
+}
