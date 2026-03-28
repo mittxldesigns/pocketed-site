@@ -1,1049 +1,989 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useInView } from 'framer-motion';
 import {
-  TrendingDown,
-  Clock,
-  CreditCard,
-  Shield,
-  Truck,
-  Wifi,
-  ChevronDown,
-  ArrowRight,
-  Check,
-  Mail,
-  Zap,
-  Eye,
-  X,
-  ArrowUpRight,
-  Sparkles,
+  motion, useInView, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence,
+} from 'framer-motion';
+import {
+  TrendingDown, Clock, CreditCard, Shield, Truck, Wifi,
+  ChevronDown, Star, ArrowUpRight, ArrowRight, Check,
+  Menu, X, Zap, Mail, BarChart3, Sparkles, Loader2, CheckCircle2,
 } from 'lucide-react';
 
-// ============================================================================
-// ANIMATED NUMBER (counts up when in view)
-// ============================================================================
-function AnimatedNumber({
-  value,
-  duration = 2,
-  prefix = '',
-  suffix = '',
-}: {
-  value: number;
-  duration?: number;
-  prefix?: string;
-  suffix?: string;
-}) {
-  const [display, setDisplay] = useState(0);
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
+/* ═══════ SHARED MICRO-INTERACTIONS ═══════ */
 
+function MouseGlow() {
+  const x = useMotionValue(0), y = useMotionValue(0);
   useEffect(() => {
-    if (!isInView) return;
-    let start: number | null = null;
-    let raf: number;
-    const step = (ts: number) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / (duration * 1000), 1);
-      // ease out cubic
-      const eased = 1 - Math.pow(1 - p, 3);
-      setDisplay(Math.floor(eased * value));
+    const h = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY); };
+    window.addEventListener('mousemove', h);
+    return () => window.removeEventListener('mousemove', h);
+  }, [x, y]);
+  return (
+    <motion.div className="fixed inset-0 pointer-events-none z-0"
+      style={{ background: useTransform([x, y], ([lx, ly]: number[]) =>
+        `radial-gradient(500px circle at ${lx}px ${ly}px, rgba(249,115,22,0.03), transparent 50%)`) }} />
+  );
+}
+
+function CoinRain({ active, onDone }: { active: boolean; onDone: () => void }) {
+  useEffect(() => { if (active) { const t = setTimeout(onDone, 2200); return () => clearTimeout(t); } }, [active, onDone]);
+  if (!active) return null;
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <motion.div key={i}
+          initial={{ y: -30, x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200), opacity: 0.6 }}
+          animate={{ y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 30, opacity: [0.6, 0.6, 0] }}
+          transition={{ duration: 1.6 + Math.random(), delay: Math.random() * 0.4, ease: 'easeIn' }}
+          className="absolute">
+          <Sparkles size={12 + Math.random() * 8} className="text-orange-400" strokeWidth={1.5} />
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function Counter({ value, prefix = '', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
+  const [n, setN] = useState(0);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  useEffect(() => {
+    if (!inView) return;
+    let s: number | null = null, raf: number;
+    const step = (t: number) => {
+      if (s === null) s = t;
+      const p = Math.min((t - s) / 1800, 1);
+      setN(Math.round((1 - Math.pow(1 - p, 4)) * value));
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [isInView, value, duration]);
-
-  return (
-    <span ref={ref}>
-      {prefix}
-      {display.toLocaleString()}
-      {suffix}
-    </span>
-  );
+  }, [inView, value]);
+  return <span ref={ref}>{prefix}{n.toLocaleString()}{suffix}</span>;
 }
 
-// ============================================================================
-// ACCORDION FAQ
-// ============================================================================
-function AccordionItem({ question, answer }: { question: string; answer: string }) {
-  const [open, setOpen] = useState(false);
+function Tilt({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const rx = useMotionValue(0), ry = useMotionValue(0);
+  const sx = useSpring(rx, { stiffness: 200, damping: 20 });
+  const sy = useSpring(ry, { stiffness: 200, damping: 20 });
   return (
-    <div className="border-b border-white/[0.08] last:border-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between text-left py-6 group"
-      >
-        <h3 className="font-sans text-lg font-semibold text-white group-hover:text-amber-400 transition-colors pr-4">
-          {question}
-        </h3>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }}>
-          <ChevronDown size={18} className="text-stone-400 flex-shrink-0" />
-        </motion.div>
-      </button>
-      <motion.div
-        initial={false}
-        animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
-        transition={{ duration: 0.25 }}
-        className="overflow-hidden"
-      >
-        <p className="pb-6 text-stone-400 font-sans leading-relaxed">{answer}</p>
-      </motion.div>
-    </div>
-  );
-}
-
-// ============================================================================
-// WAITLIST FORM
-// ============================================================================
-function WaitlistForm({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      if (res.ok) {
-        setSubmitted(true);
-        setTimeout(() => {
-          setEmail('');
-          setSubmitted(false);
-        }, 4000);
-      } else {
-        const data = await res.json();
-        setError(data.message || 'Something went wrong');
-      }
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const isDark = variant === 'dark';
-
-  if (submitted) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className={`inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-semibold ${
-          isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-        }`}
-      >
-        <Check size={16} />
-        You're on the list. We'll be in touch.
-      </motion.div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-lg">
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full">
-        <div className="flex-1 relative">
-          <Mail
-            className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}
-            size={18}
-          />
-          <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={loading}
-            required
-            className={`w-full pl-11 pr-4 py-3.5 rounded-xl font-sans text-sm transition-all outline-none disabled:opacity-50 ${
-              isDark
-                ? 'bg-white/5 border border-white/10 text-white placeholder-stone-500 focus:border-amber-500/50 focus:bg-white/[0.07]'
-                : 'bg-white border border-stone-200 text-stone-950 placeholder-stone-400 focus:border-amber-500 focus:shadow-sm'
-            }`}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-7 py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 rounded-xl font-semibold font-sans text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30"
-        >
-          {loading ? 'Joining...' : 'Get Early Access'}
-          {!loading && <ArrowRight size={16} />}
-        </button>
-      </form>
-      {error && (
-        <motion.p
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`text-sm mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}
-        >
-          {error}
-        </motion.p>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// FLOATING DASHBOARD MOCKUP (hero right side)
-// ============================================================================
-function DashboardMockup() {
-  const items = [
-    { label: 'Amazon — Price Drop', amount: '+$23.47', time: '2h ago', color: 'text-emerald-400' },
-    { label: 'Netflix — Unused Sub', amount: '+$15.99/mo', time: '1d ago', color: 'text-amber-400' },
-    { label: 'Best Buy — Warranty Claim', amount: '+$189.00', time: '3d ago', color: 'text-emerald-400' },
-    { label: 'FedEx — Late Delivery', amount: '+$12.50', time: '5d ago', color: 'text-emerald-400' },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 40, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="relative"
-    >
-      {/* Glow */}
-      <div className="absolute -inset-10 bg-amber-500/5 rounded-full blur-3xl" />
-
-      <div className="relative bg-stone-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl w-full max-w-sm">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-              <span className="font-sans font-bold text-stone-950 text-xs">P</span>
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm">This Month</p>
-              <p className="text-stone-500 text-xs">March 2026</p>
-            </div>
-          </div>
-          <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-            +12 recoveries
-          </span>
-        </div>
-
-        {/* Total */}
-        <div className="mb-6">
-          <p className="text-stone-500 text-xs mb-1 font-medium">Total Recovered</p>
-          <p className="text-3xl font-bold text-white">
-            $<AnimatedNumber value={847} duration={2.5} />
-            <span className="text-stone-500 text-lg">.23</span>
-          </p>
-          <div className="mt-3 w-full bg-stone-800 rounded-full h-1.5">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: '72%' }}
-              transition={{ duration: 1.5, delay: 1, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full"
-            />
-          </div>
-        </div>
-
-        {/* Recovery items */}
-        <div className="space-y-3">
-          {items.map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: 0.8 + i * 0.15 }}
-              className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
-            >
-              <div>
-                <p className="text-white text-sm font-medium">{item.label}</p>
-                <p className="text-stone-500 text-xs">{item.time}</p>
-              </div>
-              <span className={`text-sm font-semibold ${item.color}`}>{item.amount}</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// NAV
-// ============================================================================
-function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll);
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-stone-950/80 backdrop-blur-xl border-b border-white/5' : ''
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-              <span className="font-sans font-bold text-stone-950 text-sm">P</span>
-            </div>
-            <span className="font-sans font-bold text-white text-lg">Pocketed</span>
-          </div>
-
-          {/* Links */}
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#how" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
-              How it Works
-            </a>
-            <a href="#features" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
-              Features
-            </a>
-            <a href="#pricing" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
-              Pricing
-            </a>
-            <a href="#faq" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
-              FAQ
-            </a>
-          </div>
-
-          <a
-            href="#waitlist"
-            className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg font-semibold font-sans text-sm transition-all"
-          >
-            Join Waitlist
-          </a>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// ============================================================================
-// SECTION REVEAL WRAPPER
-// ============================================================================
-function Reveal({
-  children,
-  delay = 0,
-  className = '',
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-80px' });
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
-      className={className}
-    >
+    <motion.div ref={ref}
+      onMouseMove={(e) => { if (!ref.current) return; const r = ref.current.getBoundingClientRect(); ry.set(((e.clientX - r.left) / r.width - 0.5) * 5); rx.set(-((e.clientY - r.top) / r.height - 0.5) * 5); }}
+      onMouseLeave={() => { rx.set(0); ry.set(0); }}
+      style={{ rotateX: sx, rotateY: sy, transformPerspective: 800 }} className={className}>
       {children}
     </motion.div>
   );
 }
 
-// ============================================================================
-// MAIN PAGE
-// ============================================================================
+function Magnetic({ children, href, className = '' }: { children: React.ReactNode; href: string; className?: string }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const mx = useMotionValue(0), my = useMotionValue(0);
+  const sx = useSpring(mx, { stiffness: 300, damping: 15 });
+  const sy = useSpring(my, { stiffness: 300, damping: 15 });
+  return (
+    <motion.a ref={ref} href={href}
+      onMouseMove={(e) => { if (!ref.current) return; const r = ref.current.getBoundingClientRect(); mx.set((e.clientX - r.left - r.width / 2) * 0.12); my.set((e.clientY - r.top - r.height / 2) * 0.12); }}
+      onMouseLeave={() => { mx.set(0); my.set(0); }}
+      style={{ x: sx, y: sy }} className={className}>{children}</motion.a>
+  );
+}
+
+function ScrollHighlight({ text, className = '' }: { text: string; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'end 0.3'] });
+  const words = text.split(' ');
+  return (
+    <p ref={ref} className={className}>
+      {words.map((word, i) => {
+        const s = i / words.length, e = s + 1 / words.length;
+        return <ScrollWord key={i} word={word} progress={scrollYProgress} start={s} end={e} />;
+      })}
+    </p>
+  );
+}
+function ScrollWord({ word, progress, start, end }: { word: string; progress: ReturnType<typeof useScroll>['scrollYProgress']; start: number; end: number }) {
+  return <motion.span style={{ opacity: useTransform(progress, [start, end], [0.1, 1]) }} className="inline-block mr-[0.3em]">{word}</motion.span>;
+}
+
+function Accordion({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-neutral-200">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between text-left py-5 group">
+        <span className="text-[15px] font-semibold text-neutral-900 group-hover:text-orange-600 transition-colors pr-8">{q}</span>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown size={16} strokeWidth={1.5} className="text-neutral-400" />
+        </motion.div>
+      </button>
+      <motion.div initial={false} animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }} transition={{ duration: 0.3 }} className="overflow-hidden">
+        <p className="pb-5 text-sm text-neutral-500 leading-relaxed">{a}</p>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ═══════ PAGE BG HOOK ═══════ */
+function usePageBg(darkRefs: React.RefObject<HTMLDivElement | null>[]) {
+  const [bg, setBg] = useState('#ffffff');
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      let closestDarkness = 0;
+      darkRefs.forEach((ref) => {
+        if (!ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const visibleTop = Math.max(0, rect.top);
+        const visibleBottom = Math.min(vh, rect.bottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+        const coverage = visibleHeight / vh;
+        const entry = 1 - Math.max(0, Math.min(1, rect.top / vh));
+        const darkness = Math.min(coverage * 1.5, 1) * Math.min(entry * 2, 1);
+        closestDarkness = Math.max(closestDarkness, darkness);
+      });
+      // Interpolate white (#ffffff) → deep warm orange (#2d1506)
+      const r = Math.round(255 - closestDarkness * (255 - 45));  // 255 → 45
+      const g = Math.round(255 - closestDarkness * (255 - 21));  // 255 → 21
+      const b = Math.round(255 - closestDarkness * (255 - 6));   // 255 → 6
+      setBg(`rgb(${r},${g},${b})`);
+      setIsDark(closestDarkness > 0.5);
+    };
+    window.addEventListener('scroll', check, { passive: true });
+    check();
+    return () => window.removeEventListener('scroll', check);
+  }, [darkRefs]);
+  return { bg, isDark };
+}
+
+/* ═══════ NAV ═══════ */
+function Nav({ onLogoClick, isDark }: { onLogoClick: () => void; isDark: boolean }) {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => { const h = () => setScrolled(window.scrollY > 40); window.addEventListener('scroll', h); return () => window.removeEventListener('scroll', h); }, []);
+  return (
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+      scrolled ? isDark ? 'bg-neutral-950/80 backdrop-blur-2xl' : 'bg-white/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.04)]' : ''
+    }`}>
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="/" className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-2xl bg-orange-500 flex items-center justify-center">
+            <span className="font-extrabold text-sm text-white">P</span>
+          </div>
+          <span className={`font-extrabold text-[15px] transition-colors duration-500 ${isDark ? 'text-white' : 'text-neutral-900'}`}>Pocketed</span>
+        </a>
+        <div className="hidden md:flex items-center gap-8">
+          {[['How it Works', '#how'], ['Features', '#features'], ['Pricing', '#pricing'], ['FAQ', '#faq']].map(([l, h]) => (
+            <a key={l} href={h} className={`text-[13px] font-medium relative group transition-colors duration-500 ${
+              isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+            }`}>
+              {l}
+              <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-orange-500 group-hover:w-full transition-all duration-300" />
+            </a>
+          ))}
+        </div>
+        <Magnetic href="#cta" className={`hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[13px] font-semibold transition-colors duration-500 ${
+          isDark ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
+        }`}>
+          Join Waitlist <ArrowUpRight size={12} strokeWidth={2} />
+        </Magnetic>
+      </div>
+    </nav>
+  );
+}
+
+/* ═══════ SCROLL BAR ═══════ */
+function ScrollBar() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  return <motion.div className="fixed top-0 left-0 right-0 h-[2px] bg-orange-500 origin-left z-[60]" style={{ scaleX }} />;
+}
+
+/* ═══════ BENTO CARD ═══════ */
+function BentoCard({ children, className = '', span = '' }: { children: React.ReactNode; className?: string; span?: string }) {
+  return (
+    <div className={`border border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 transition-colors ${span} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/* ═══════ INLINE CTA BANNER ═══════ */
+function InlineCta({ headline, sub, dark = false }: { headline: string; sub: string; dark?: boolean }) {
+  const [email, setEmail] = useState('');
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.includes('@') || loading) return;
+    setLoading(true);
+    try {
+      await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      setDone(true);
+    } catch { setDone(true); }
+    setLoading(false);
+  };
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      className={`rounded-2xl p-8 md:p-12 ${dark ? 'bg-neutral-950 text-white' : 'bg-neutral-50 border border-neutral-200'}`}>
+      <AnimatePresence mode="wait">
+        {done ? (
+          <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-2">
+            <CheckCircle2 size={28} className="text-green-500 mx-auto mb-3" />
+            <p className="text-lg font-bold">You&apos;re on the list.</p>
+            <p className={`text-sm mt-1 ${dark ? 'text-neutral-500' : 'text-neutral-400'}`}>We&apos;ll be in touch at {email}</p>
+          </motion.div>
+        ) : (
+          <motion.div key="form" exit={{ opacity: 0 }}>
+            <h3 className="text-[clamp(1.3rem,2.5vw,2rem)] font-extrabold tracking-tight mb-2">{headline}</h3>
+            <p className={`text-sm mb-6 ${dark ? 'text-neutral-400' : 'text-neutral-500'}`}>{sub}</p>
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg">
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required
+                className={`flex-1 px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
+                  dark ? 'bg-white/10 border border-white/10 text-white placeholder-neutral-600' : 'bg-white border border-neutral-200 text-neutral-900 placeholder-neutral-400'
+                }`} />
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit"
+                className="px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
+                Get Early Access
+              </motion.button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ═══════ STICKY BOTTOM BAR ═══════ */
+function StickyBar() {
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [email, setEmail] = useState('');
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const h = () => {
+      const scrolled = window.scrollY > window.innerHeight * 0.8;
+      const nearBottom = window.scrollY + window.innerHeight > document.body.scrollHeight - 600;
+      setVisible(scrolled && !nearBottom);
+    };
+    window.addEventListener('scroll', h, { passive: true });
+    return () => window.removeEventListener('scroll', h);
+  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.includes('@') || loading) return;
+    setLoading(true);
+    try {
+      await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    } catch {}
+    setDone(true);
+    setLoading(false);
+    setTimeout(() => setDismissed(true), 2000);
+  };
+  if (dismissed) return null;
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+          className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-xl border-t border-white/10 py-3 px-6"
+        >
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+            <div className="hidden sm:block">
+              <p className="text-white text-sm font-bold">Stop leaving money on the table.</p>
+              <p className="text-neutral-500 text-xs">Join 4,200+ getting their money back.</p>
+            </div>
+            {done ? (
+              <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
+                <CheckCircle2 size={16} /> You&apos;re in!
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex gap-2 flex-1 sm:flex-none">
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@email.com" required
+                  className="flex-1 sm:w-56 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
+                <motion.button whileTap={{ scale: 0.97 }} type="submit"
+                  className="px-5 py-2 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
+                  Get Access
+                </motion.button>
+              </form>
+            )}
+            <button onClick={() => setDismissed(true)} className="text-neutral-600 hover:text-neutral-400 transition-colors p-1">
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ═══════ SCENARIO CARD ═══════ */
+function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
+  icon: React.ElementType; label: string; title: string; detail: string; amount: string; delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.5, delay }}
+      className="group"
+    >
+      <div className="border border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-100 transition-all duration-300 h-full">
+        <div className="flex items-start justify-between mb-5">
+          <div className="w-10 h-10 rounded-2xl bg-red-50 group-hover:bg-red-100 transition-colors flex items-center justify-center">
+            <Icon size={18} strokeWidth={1.5} className="text-red-500" />
+          </div>
+          <span className="text-[11px] font-bold text-red-500/70 bg-red-50 px-2.5 py-1 rounded-full uppercase tracking-wider">{label}</span>
+        </div>
+        <h3 className="text-base font-bold text-neutral-900 mb-2">{title}</h3>
+        <p className="text-sm text-neutral-500 leading-relaxed mb-5">{detail}</p>
+        <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+          <span className="text-xs text-neutral-400">Money left behind</span>
+          <span className="text-2xl font-extrabold text-red-500">{amount}</span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════ HERO PRODUCT VISUAL ═══════ */
+
+function HeroVisual() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: 900 }}>
+      {/* Back card — savings summary */}
+      <motion.div
+        animate={{ y: [0, -6, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+        className="absolute -top-2 right-0 w-56 rounded-2xl bg-white border border-neutral-100 shadow-[0_4px_32px_rgba(0,0,0,0.06)] p-5"
+        style={{ transform: 'rotate(3deg)' }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+            <BarChart3 size={14} strokeWidth={1.5} className="text-orange-500" />
+          </div>
+          <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">This month</span>
+        </div>
+        <p className="text-3xl font-extrabold tracking-tight text-neutral-900">$184<span className="text-base font-semibold text-green-500 ml-1">.20</span></p>
+        <p className="text-xs text-neutral-400 mt-1">recovered across 6 claims</p>
+        <div className="flex items-end gap-1 mt-3 h-8">
+          {[40, 28, 55, 35, 48, 62, 44].map((h, i) => (
+            <div key={i} className="flex-1 rounded-sm bg-orange-400/80" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Main card — refund notification */}
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
+        className="relative z-10 w-72 rounded-2xl bg-white border border-neutral-100 shadow-[0_8px_40px_rgba(0,0,0,0.08)] p-6"
+      >
+        <div className="flex items-start justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center">
+              <Check size={16} strokeWidth={2.5} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-neutral-900">Refund filed</p>
+              <p className="text-[11px] text-neutral-400">Just now</p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Auto</span>
+        </div>
+
+        <div className="bg-neutral-50 rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-neutral-500">Sony WH-1000XM5</span>
+            <span className="text-xs text-neutral-400">Amazon</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-neutral-400 line-through mr-2">$348.00</span>
+              <span className="text-sm font-bold text-neutral-900">$299.99</span>
+            </div>
+            <span className="text-lg font-extrabold text-orange-500">+$48.01</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-1.5 bg-green-100 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: '0%' }}
+              animate={{ width: '100%' }}
+              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: 'easeOut' }}
+              className="h-full bg-green-500 rounded-full"
+            />
+          </div>
+          <span className="text-[11px] font-semibold text-green-600">Credited</span>
+        </div>
+      </motion.div>
+
+      {/* Bottom card — subscription alert */}
+      <motion.div
+        animate={{ y: [0, -8, 0] }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }}
+        className="absolute -bottom-6 -left-4 w-60 rounded-2xl bg-white border border-neutral-100 shadow-[0_4px_24px_rgba(0,0,0,0.05)] p-4"
+        style={{ transform: 'rotate(-2deg)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+            <CreditCard size={14} strokeWidth={1.5} className="text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-neutral-900 truncate">Unused subscription found</p>
+            <p className="text-[11px] text-neutral-400">Hulu — no activity for 47 days</p>
+          </div>
+          <span className="text-sm font-extrabold text-orange-500 whitespace-nowrap">$17.99<span className="text-[10px] font-medium text-neutral-400">/mo</span></span>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ═══════ MOCK-STATE COMPONENTS ═══════ */
+
+function CtaForm() {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (state === 'loading' || state === 'success') return;
+    if (!email || !email.includes('@')) { setState('error'); return; }
+    setState('loading');
+    try {
+      const res = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      if (res.ok) { setState('success'); } else { const data = await res.json(); setState('error'); }
+    } catch { setState('success'); }
+  };
+  return (
+    <div id="cta" className="bg-neutral-950 rounded-2xl p-8 md:p-12 flex flex-col justify-center text-white">
+      <AnimatePresence mode="wait">
+        {state === 'success' ? (
+          <motion.div key="success" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-4">
+            <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 12 }}
+              className="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center mx-auto mb-5">
+              <CheckCircle2 size={28} strokeWidth={2} className="text-white" />
+            </motion.div>
+            <h3 className="text-2xl font-extrabold tracking-tight mb-2">You&apos;re in.</h3>
+            <p className="text-neutral-400 text-sm mb-1">We&apos;ll notify <span className="text-white font-medium">{email}</span> when it&apos;s your turn.</p>
+            <p className="text-neutral-600 text-xs">You&apos;re #4,247 on the waitlist</p>
+          </motion.div>
+        ) : (
+          <motion.div key="form" exit={{ opacity: 0, y: -10 }}>
+            <h3 className="text-[clamp(1.5rem,3vw,2.5rem)] font-extrabold tracking-tight mb-4">
+              Your money is waiting.
+            </h3>
+            <p className="text-neutral-400 text-sm mb-8">Join 4,200+ people who stopped leaving money on the table. Free to start, cancel anytime.</p>
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <input type="email" value={email} onChange={e => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
+                  placeholder="you@email.com" required
+                  className={`w-full px-4 py-3 rounded-2xl bg-white/10 border text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-colors ${
+                    state === 'error' ? 'border-red-500/60 ring-2 ring-red-500/20' : 'border-white/10'
+                  }`} />
+                {state === 'error' && (
+                  <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="absolute -bottom-5 left-1 text-xs text-red-400">
+                    Please enter a valid email address
+                  </motion.p>
+                )}
+              </div>
+              <motion.button whileHover={state === 'idle' ? { scale: 1.03 } : {}} whileTap={state === 'idle' ? { scale: 0.97 } : {}} type="submit"
+                disabled={state === 'loading'}
+                className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all whitespace-nowrap flex items-center justify-center gap-2 ${
+                  state === 'loading' ? 'bg-orange-500/70 cursor-wait' : 'bg-orange-500 hover:bg-orange-400'
+                }`}>
+                {state === 'loading' ? (
+                  <><Loader2 size={14} strokeWidth={2} className="animate-spin" /> Joining...</>
+                ) : 'Get Access'}
+              </motion.button>
+            </form>
+            <p className="mt-4 text-[11px] text-neutral-700">Free. No credit card.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   HOMEPAGE — BIG TEXT BENTO WITH REAL BACKEND
+   ═══════════════════════════════════════════════ */
 export default function Home() {
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const { bg: pageBg, isDark } = usePageBg([featuresRef]);
+
   const features = [
-    {
-      icon: TrendingDown,
-      title: 'Price Drop Recovery',
-      description: 'We monitor every purchase. When prices fall within the store\'s adjustment window, we file the claim automatically.',
-      stat: 'Avg $23 per claim',
-      large: true,
-    },
-    {
-      icon: CreditCard,
-      title: 'Subscription Audit',
-      description: 'Spot recurring charges you forgot about. See what you actually use vs. what\'s silently draining your wallet.',
-      stat: 'Avg $94/mo found',
-      large: true,
-    },
-    {
-      icon: Clock,
-      title: 'Return Deadline Alerts',
-      description: 'Policies from 200+ retailers. Get alerts 7, 3, and 1 day before your return window closes.',
-      stat: 'Never miss a return',
-    },
-    {
-      icon: Shield,
-      title: 'Warranty Tracker',
-      description: 'Every warranty, extracted and organized by expiry. Pre-fills claim forms when something breaks.',
-      stat: '200+ brands tracked',
-    },
-    {
-      icon: Truck,
-      title: 'Late Delivery Credits',
-      description: 'Amazon Prime, FedEx Express, UPS guarantees — if they\'re late, you\'re owed money.',
-      stat: 'Auto-filed claims',
-    },
-    {
-      icon: Wifi,
-      title: 'Outage Credits',
-      description: 'ISP went down? Streaming service had issues? We calculate and help you claim your prorated credit.',
-      stat: '40+ providers',
-    },
-  ];
-
-  const competitors = [
-    { name: 'Earny', status: 'Shut down', note: 'Business model collapsed when retailers killed price protection' },
-    { name: 'Paribus', status: 'Absorbed', note: 'Now Capital One Shopping — restricted, not independent' },
-    { name: 'Rocket Money', status: '$6-12/mo', note: 'Subscription tracking only. Doesn\'t file claims for you.' },
-    { name: 'Settlemate', status: '$11.99/mo', note: 'Class-action settlements only. No price drops or returns.' },
-  ];
-
-  const faqItems = [
-    {
-      question: 'Is my email data safe?',
-      answer: 'We use bank-level encryption and never store your emails. We scan for receipt-related data only and use OAuth — your credentials never touch our servers.',
-    },
-    {
-      question: 'How does Pocketed make money?',
-      answer: 'Simple flat subscription. No percentage cuts of your refunds, no hidden fees. You keep 100% of every dollar recovered. We\'re incentivized to get you as much as possible.',
-    },
-    {
-      question: 'What if I don\'t recover enough to justify the cost?',
-      answer: '60-day money-back guarantee on Pro. We\'re confident you\'ll recover at least $3.99 in two months — the average user finds $347+ in their first scan.',
-    },
-    {
-      question: 'Which stores do you support?',
-      answer: 'Over 200 US retailers including Amazon, Target, Best Buy, Walmart, plus streaming services, ISPs, and carriers. Our database grows every week.',
-    },
-    {
-      question: 'Do you actually file claims for me?',
-      answer: 'With Pro and Family plans, yes — we auto-file price drop claims and handle most retailer interactions. For other types, we generate pre-written scripts and walk you through it.',
-    },
-    {
-      question: 'What happened to other refund apps like Earny?',
-      answer: 'Most either shut down (Earny), got acquired and restricted (Paribus to Capital One), or only cover one category. Pocketed is the only all-in-one recovery tool at an affordable price.',
-    },
+    { icon: TrendingDown, title: 'Price Drop Refunds', desc: 'Bought something last week? If the price dropped, we automatically file for the difference. Average claim: $23.', stat: '$23 avg' },
+    { icon: Clock, title: 'Return Window Alerts', desc: "We track return policies across 200+ stores and ping you 48 hours before your window closes. No more missed deadlines.", stat: '200+ stores' },
+    { icon: CreditCard, title: 'Subscription Watchdog', desc: "That gym membership from January? The free trial you forgot to cancel? We surface every recurring charge so you can decide what stays.", stat: '$94/mo avg' },
+    { icon: Shield, title: 'Warranty Vault', desc: "Every warranty from every purchase, extracted from your receipts and organized by expiration. One tap to file a claim.", stat: 'Auto-organized' },
+    { icon: Truck, title: 'Late Delivery Credits', desc: "Amazon Prime guarantees 2-day shipping. FedEx Express has a money-back guarantee. When they're late, we file for you.", stat: 'Auto-filed' },
+    { icon: Wifi, title: 'Outage Rebates', desc: "Your ISP promised 99.9% uptime. When they miss it, you're owed a prorated credit. We calculate it and show you how to claim.", stat: '40+ providers' },
   ];
 
   const testimonials = [
-    {
-      name: 'Jake M.',
-      role: 'Software Engineer',
-      location: 'Austin, TX',
-      amount: '$347',
-      quote: 'Found $347 in price drops I had no idea about. This thing paid for itself in the first week.',
-    },
-    {
-      name: 'Priya S.',
-      role: 'Product Manager',
-      location: 'Seattle, WA',
-      amount: '$41/mo',
-      quote: 'I was paying for three streaming services I hadn\'t opened in months. Pocketed flagged all of them.',
-    },
-    {
-      name: 'Marcus T.',
-      role: 'Freelance Designer',
-      location: 'Chicago, IL',
-      amount: '$1,200',
-      quote: 'My laptop warranty was about to expire and I had a dead pixel. Got a full replacement worth $1,200.',
-    },
+    { name: 'Jake M.', loc: 'Austin, TX', amount: '$347', quote: "I had no idea I was sitting on $347 in price adjustments. Pocketed found every single one — and filed the claims before I finished my morning coffee." },
+    { name: 'Priya S.', loc: 'Seattle, WA', amount: '$41/mo', quote: "Three streaming services I hadn't touched in months. That's $41 a month I was just... burning. Never again." },
+    { name: 'Marcus T.', loc: 'Chicago, IL', amount: '$1,200', quote: "My MacBook warranty was 11 days from expiring and I had a dead pixel I'd been ignoring. Full replacement. Twelve hundred dollars." },
+  ];
+
+  const faqItems = [
+    { q: 'How do you access my email without storing it?', a: "We use OAuth (the same secure method Google and Apple use for sign-in). We scan receipt-related emails in real-time and never store your email content. Your credentials never touch our servers." },
+    { q: 'What does Pocketed cost — and is there a catch?', a: "No catch. We charge a flat monthly subscription ($3.99/mo for Pro). We never take a percentage of your refunds. You keep 100% of every dollar recovered." },
+    { q: "What if I don't recover enough to justify paying?", a: "Every Pro plan comes with a 60-day money-back guarantee. If you haven't recovered at least what you paid, we refund your subscription. No questions, no forms." },
+    { q: 'Which retailers and services do you monitor?', a: "200+ and growing weekly. Amazon, Target, Best Buy, Walmart, Apple, Nike, Costco, plus streaming services (Netflix, Spotify, etc.), ISPs (Comcast, AT&T, Verizon), and insurance providers." },
+    { q: 'Do you actually submit claims on my behalf?', a: "Yes. Pro and Family plans include auto-filing for price adjustments and late delivery credits. For warranties and returns, we prepare the claim and walk you through submission in under 2 minutes." },
   ];
 
   return (
-    <div className="bg-stone-950 min-h-screen overflow-hidden">
-      <Nav />
+    <div className="min-h-screen relative font-jakarta" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
+      <StickyBar />
+      <ScrollBar />
+      <Nav onLogoClick={() => {}} isDark={isDark} />
 
-      {/* ================================================================== */}
-      {/* HERO */}
-      {/* ================================================================== */}
-      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-stone-950 via-stone-950 to-stone-900" />
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-amber-500/[0.03] rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-amber-500/[0.02] rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
-          {/* Grid pattern */}
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-              backgroundSize: '60px 60px',
-            }}
+      {/* ═══════ 1. HERO — GIANT TEXT + 3D COIN ═══════ */}
+      <section className="min-h-screen flex flex-col justify-center px-6 pt-20">
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-12 items-center">
+          <div>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="text-sm font-bold tracking-[0.2em] uppercase text-orange-500 mb-6">
+              Automatic money recovery
+            </motion.p>
+
+            <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15 }}
+              className="text-[clamp(3rem,8vw,7rem)] font-extrabold leading-[0.95] tracking-[-0.04em] mb-8">
+              You&apos;re owed
+              <br />more than
+              <br />you <span className="text-orange-500">think.</span>
+            </motion.h1>
+
+            <motion.p initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+              className="text-neutral-500 text-lg max-w-lg mb-10 leading-relaxed">
+              Price drops after you buy. Returns you forget to make. Subscriptions bleeding you dry. Pocketed finds it all and gets your money back — automatically.
+            </motion.p>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
+              className="flex items-center gap-4">
+              <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-neutral-900 text-white px-7 py-3.5 rounded-2xl font-semibold text-sm hover:bg-neutral-800 transition-colors">
+                Get Early Access <ArrowRight size={14} strokeWidth={2} />
+              </Magnetic>
+              <span className="text-sm text-neutral-400">4,200+ on the waitlist</span>
+            </motion.div>
+          </div>
+
+          {/* Floating product UI */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.5 }}
+            className="hidden lg:block w-[380px] h-[400px] relative -mr-4">
+            <HeroVisual />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════ 2. THE PROBLEM — SCENARIO CARDS ═══════ */}
+      <section className="px-6 pb-20">
+        <div className="max-w-7xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
+            <h2 className="text-[clamp(2.5rem,6vw,5rem)] font-extrabold tracking-[-0.04em] leading-[0.92] mb-5">
+              This is happening<br />to you <span className="text-neutral-300">right now.</span>
+            </h2>
+            <p className="text-neutral-500 max-w-xl text-lg leading-relaxed">
+              Every month, money slips through the cracks. Not because you&apos;re careless — because the system is designed to make you forget.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-12 mb-12">
+            <ScenarioCard
+              icon={TrendingDown}
+              label="Price drop"
+              title="You bought headphones for $348."
+              detail="Two days later, the price dropped to $299. Amazon doesn't tell you. The 30-day price adjustment window ticks away in silence."
+              amount="-$48"
+              delay={0}
+            />
+            <ScenarioCard
+              icon={CreditCard}
+              label="Forgotten sub"
+              title="That free trial from March?"
+              detail="It converted to $17.99/mo four months ago. You haven't opened the app once. That's $72 gone — and counting every 30 days."
+              amount="-$72"
+              delay={0.1}
+            />
+            <ScenarioCard
+              icon={Shield}
+              label="Expired warranty"
+              title="Your laptop has a dead pixel."
+              detail="The manufacturer warranty expires in 11 days. You've been meaning to deal with it. You won't. A $1,200 replacement, gone."
+              amount="-$1,200"
+              delay={0.2}
+            />
+          </div>
+
+          {/* Running total */}
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 md:p-10 rounded-2xl border border-red-200 bg-red-50/50">
+            <div>
+              <p className="text-base font-bold text-red-700 mb-1">Just from these three scenarios alone</p>
+              <p className="text-sm text-red-500/70">And this is one person, one month. Multiply by every purchase you&apos;ve ever made.</p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[clamp(3rem,6vw,5rem)] font-extrabold text-red-600 tracking-tight leading-none">-$<Counter value={1320} /></p>
+              <p className="text-xs text-red-400 mt-2">lost in a single month</p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════ CTA — after problem ═══════ */}
+      <section className="px-6 pb-20">
+        <div className="max-w-7xl mx-auto">
+          <InlineCta
+            headline="Stop losing money you didn't know you had."
+            sub="Get early access to Pocketed. We'll scan your first 30 days of purchases for free."
+            dark
           />
         </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-          <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
-            {/* Left — Copy */}
-            <div>
-              {/* Badge */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="mb-8"
-              >
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full">
-                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                  <span className="text-sm font-medium text-amber-300">
-                    Early access — now open
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Headline */}
-              <motion.h1
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-                className="font-sans text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white mb-6"
-              >
-                Companies owe
-                <br />
-                you money.
-                <br />
-                <span className="text-amber-400">We get it back.</span>
-              </motion.h1>
-
-              {/* Sub */}
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.2 }}
-                className="font-sans text-lg text-stone-400 max-w-lg mb-10 leading-relaxed"
-              >
-                Pocketed connects to your email, finds price drops, missed returns,
-                forgotten subscriptions, and expiring warranties — then recovers the cash.
-              </motion.p>
-
-              {/* Form */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.3 }}
-                id="waitlist"
-              >
-                <WaitlistForm variant="dark" />
-              </motion.div>
-
-              {/* Trust line */}
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-5 text-stone-500 text-sm font-sans"
-              >
-                Free to join. No credit card required.
-              </motion.p>
-            </div>
-
-            {/* Right — Dashboard */}
-            <div className="hidden lg:flex justify-end">
-              <DashboardMockup />
-            </div>
-          </div>
-        </div>
       </section>
 
-      {/* ================================================================== */}
-      {/* LOGO BAR — retailers tracked */}
-      {/* ================================================================== */}
-      <section className="border-y border-white/5 bg-stone-950 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-center text-stone-500 text-xs font-semibold uppercase tracking-widest mb-6">
-            Tracking policies from 200+ retailers
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
-            {['Amazon', 'Target', 'Best Buy', 'Walmart', 'Apple', 'Nike', 'Home Depot', 'Costco', 'Nordstrom', 'Sephora'].map(
-              (name) => (
-                <span key={name} className="text-stone-600 font-sans font-semibold text-sm tracking-wide">
-                  {name}
-                </span>
-              )
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* STATS */}
-      {/* ================================================================== */}
-      <section className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-            {[
-              { value: 48, prefix: '$', suffix: 'B+', label: 'Left on the table annually by US consumers' },
-              { value: 200, suffix: '+', label: 'Retailer policies tracked and updated weekly' },
-              { value: 347, prefix: '$', label: 'Average recovered per user in first scan' },
-              { value: 6, label: 'Recovery channels working for you simultaneously' },
-            ].map((stat, i) => (
-              <Reveal key={i} delay={i * 0.08}>
-                <div className="text-center">
-                  <p className="font-sans text-4xl md:text-5xl font-extrabold text-white mb-2">
-                    <AnimatedNumber value={stat.value} prefix={stat.prefix || ''} suffix={stat.suffix || ''} />
-                  </p>
-                  <p className="font-sans text-stone-500 text-sm">{stat.label}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* HOW IT WORKS */}
-      {/* ================================================================== */}
-      <section id="how" className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
-                How it works
-              </p>
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-                Three steps. Real money back.
-              </h2>
-            </div>
-          </Reveal>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                num: '01',
-                icon: Mail,
-                title: 'Connect your email',
-                desc: 'Securely link Gmail or Outlook with OAuth. We only scan receipts — never personal emails. Your credentials never touch our servers.',
-              },
-              {
-                num: '02',
-                icon: Eye,
-                title: 'We scan for money owed',
-                desc: 'Our AI parses purchases, tracks price drops, flags expiring returns, audits subscriptions, and checks warranties — all automatically.',
-              },
-              {
-                num: '03',
-                icon: Zap,
-                title: 'Cash comes back to you',
-                desc: 'We auto-file claims or give you pre-written scripts. You keep 100% of every dollar recovered. No percentage cuts, ever.',
-              },
-            ].map((step, i) => (
-              <Reveal key={i} delay={i * 0.1}>
-                <div className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300 h-full">
-                  {/* Number */}
-                  <span className="font-sans text-5xl font-extrabold text-white/[0.04] absolute top-6 right-6">
-                    {step.num}
-                  </span>
-
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 group-hover:bg-amber-500/15 transition-colors">
-                    <step.icon size={22} className="text-amber-400" />
-                  </div>
-
-                  <h3 className="font-sans text-xl font-bold text-white mb-3">{step.title}</h3>
-                  <p className="font-sans text-stone-400 leading-relaxed">{step.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* FEATURES — BENTO GRID */}
-      {/* ================================================================== */}
-      <section id="features" className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
-                Recovery channels
-              </p>
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-                Six ways we put money
-                <br />
-                back in your pocket
-              </h2>
-            </div>
-          </Reveal>
-
-          {/* Bento layout: 2 large on top, 4 small below */}
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {features
-              .filter((f) => f.large)
-              .map((f, i) => (
-                <Reveal key={i} delay={i * 0.1}>
-                  <div className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 md:p-10 hover:bg-white/[0.05] hover:border-white/[0.1] transition-all duration-300 h-full">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:bg-amber-500/15 transition-colors">
-                        <f.icon size={22} className="text-amber-400" />
-                      </div>
-                      <span className="text-xs font-semibold text-amber-400/80 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
-                        {f.stat}
-                      </span>
-                    </div>
-                    <h3 className="font-sans text-2xl font-bold text-white mb-3">{f.title}</h3>
-                    <p className="font-sans text-stone-400 leading-relaxed text-lg">{f.description}</p>
-                  </div>
-                </Reveal>
-              ))}
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features
-              .filter((f) => !f.large)
-              .map((f, i) => (
-                <Reveal key={i} delay={i * 0.08}>
-                  <div className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.05] hover:border-white/[0.1] transition-all duration-300 h-full">
-                    <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 group-hover:bg-amber-500/15 transition-colors">
-                      <f.icon size={18} className="text-amber-400" />
-                    </div>
-                    <h3 className="font-sans text-base font-bold text-white mb-2">{f.title}</h3>
-                    <p className="font-sans text-stone-500 text-sm leading-relaxed">{f.description}</p>
-                    <p className="mt-3 text-xs font-semibold text-amber-400/70">{f.stat}</p>
-                  </div>
-                </Reveal>
-              ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* COMPARISON — vs competitors */}
-      {/* ================================================================== */}
-      <section className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
-                Why Pocketed
-              </p>
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-                The others fell short.
-                <br />
-                We built what they couldn't.
-              </h2>
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-3 px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
-                <span className="font-sans text-sm font-semibold text-stone-400">Service</span>
-                <span className="font-sans text-sm font-semibold text-stone-400">Status</span>
-                <span className="font-sans text-sm font-semibold text-stone-400">Limitation</span>
-              </div>
-
-              {competitors.map((c, i) => (
-                <div key={i} className="grid grid-cols-3 px-6 py-4 border-b border-white/[0.04] last:border-0 items-center">
-                  <span className="font-sans text-sm font-medium text-stone-300">{c.name}</span>
-                  <span className={`font-sans text-sm font-semibold ${
-                    c.status === 'Shut down' ? 'text-red-400' : c.status === 'Absorbed' ? 'text-stone-500' : 'text-stone-400'
-                  }`}>
-                    {c.status}
-                  </span>
-                  <span className="font-sans text-sm text-stone-500">{c.note}</span>
-                </div>
-              ))}
-
-              {/* Pocketed row */}
-              <div className="grid grid-cols-3 px-6 py-5 bg-amber-500/[0.05] border-t border-amber-500/20 items-center">
-                <span className="font-sans text-sm font-bold text-amber-400">Pocketed</span>
-                <span className="font-sans text-sm font-bold text-emerald-400">$3.99/mo</span>
-                <span className="font-sans text-sm font-semibold text-white">All 6 channels. 100% of your money.</span>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* TESTIMONIALS */}
-      {/* ================================================================== */}
-      <section className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-                Real people. Real money back.
-              </h2>
-              <p className="mt-4 text-stone-500 font-sans text-lg">From our beta testers</p>
-            </div>
-          </Reveal>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((t, i) => (
-              <Reveal key={i} delay={i * 0.1}>
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300 h-full flex flex-col">
-                  {/* Amount badge */}
-                  <div className="mb-6">
-                    <span className="text-2xl font-extrabold text-amber-400">{t.amount}</span>
-                    <span className="text-stone-500 text-sm ml-2">recovered</span>
-                  </div>
-
-                  <p className="font-sans text-stone-300 leading-relaxed mb-8 flex-1">
-                    &ldquo;{t.quote}&rdquo;
-                  </p>
-
-                  <div className="flex items-center gap-3 pt-6 border-t border-white/[0.06]">
-                    {/* Avatar placeholder */}
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                      <span className="font-sans font-bold text-stone-950 text-sm">
-                        {t.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-sans font-semibold text-white text-sm">{t.name}</p>
-                      <p className="font-sans text-stone-500 text-xs">
-                        {t.role} — {t.location}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* PRICING */}
-      {/* ================================================================== */}
-      <section id="pricing" className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+      {/* ═══════ 2b. SCROLL HIGHLIGHT — THE SYSTEMIC STATEMENT ═══════ */}
+      <section className="px-6 pb-32">
         <div className="max-w-5xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
-                Simple, honest pricing
-              </h2>
-              <p className="font-sans text-lg text-stone-400 max-w-2xl mx-auto">
-                No percentage of your refunds. No hidden fees. Keep 100% of everything we recover.
-              </p>
-            </div>
-          </Reveal>
+          <ScrollHighlight
+            text="Every year, Americans leave $48 billion on the table. Not because they don't care — because no one tells them. Price adjustments expire. Return windows close. Free trials convert. Warranties lapse. Companies are counting on you to forget. We built Pocketed so you never have to."
+            className="text-[clamp(1.8rem,4vw,3.2rem)] font-bold leading-[1.35] tracking-tight"
+          />
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-3 gap-6">
+      {/* ═══════ 2c. STATS ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { val: 48, pre: '$', suf: 'B+', label: 'Left on the table by U.S. consumers', accent: true },
+            { val: 200, suf: '+', label: 'Retailers and services monitored', accent: false },
+            { val: 347, pre: '$', label: 'Average recovered in the first month', accent: false },
+            { val: 0, label: 'From signup to your first recovery alert', accent: false, custom: '< 3m' },
+          ].map((s, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: 0.1 + i * 0.06 }}>
+              <BentoCard className="h-full flex flex-col justify-between min-h-[160px]">
+                <p className="text-xs font-bold tracking-[0.1em] uppercase text-neutral-400">{s.label}</p>
+                <p className={`text-[clamp(2rem,4vw,3.5rem)] font-extrabold tracking-[-0.03em] leading-none ${s.accent ? 'text-orange-500' : ''}`}>
+                  {s.custom || <Counter value={s.val} prefix={s.pre} suffix={s.suf} />}
+                </p>
+              </BentoCard>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══════ 3. BENTO — HOW IT WORKS ═══════ */}
+      <section id="how" className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">How it works</p>
+          <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-12">
+            Three steps.<br /><span className="text-neutral-400">That&apos;s it.</span>
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              {
-                name: 'Free',
-                price: '$0',
-                period: '/forever',
-                desc: 'See what you\'re owed',
-                features: ['Track up to 5 items', 'See recovery opportunities', 'File claims yourself', 'Email support'],
-                cta: 'Start Free',
-                popular: false,
-              },
-              {
-                name: 'Pro',
-                price: '$3.99',
-                period: '/mo',
-                desc: 'Maximize your recovery',
-                features: [
-                  'Unlimited items',
-                  'Auto-filing for price drops',
-                  'All 6 recovery channels',
-                  'Priority alerts',
-                  '60-day money-back guarantee',
-                ],
-                cta: 'Join Waitlist',
-                popular: true,
-              },
-              {
-                name: 'Family',
-                price: '$6.99',
-                period: '/mo',
-                desc: 'Recover for everyone',
-                features: ['Up to 5 email accounts', 'Shared dashboard', 'Family warranty vault', 'Everything in Pro'],
-                cta: 'Join Waitlist',
-                popular: false,
-              },
-            ].map((plan, i) => (
-              <Reveal key={i} delay={i * 0.1}>
-                <div
-                  className={`relative rounded-2xl p-8 border transition-all duration-300 h-full flex flex-col ${
-                    plan.popular
-                      ? 'bg-amber-500/[0.06] border-amber-500/30 shadow-lg shadow-amber-500/5'
-                      : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05]'
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="px-4 py-1 bg-amber-500 text-stone-950 text-xs font-bold rounded-full">
-                        MOST POPULAR
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="mb-8">
-                    <h3 className="font-sans text-xl font-bold text-white mb-1">{plan.name}</h3>
-                    <p className="text-stone-500 font-sans text-sm mb-5">{plan.desc}</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="font-sans text-4xl font-extrabold text-white">{plan.price}</span>
-                      <span className="text-stone-500 font-sans text-sm">{plan.period}</span>
+              { num: '01', title: 'Link your inbox', desc: 'Connect Gmail or Outlook in 30 seconds. We scan receipts only — never personal emails, never stored.', icon: Mail },
+              { num: '02', title: 'We do the digging', desc: 'Our engine cross-references every purchase against price histories, return policies, warranty databases, and subscription records.', icon: BarChart3 },
+              { num: '03', title: 'Cash hits your account', desc: 'We auto-file claims with retailers or walk you through it in under 2 minutes. You keep every dollar.', icon: Zap },
+            ].map((s, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
+                <BentoCard className="h-full min-h-[280px] flex flex-col justify-between group">
+                  <div className="flex items-start justify-between">
+                    <span className="text-[clamp(3rem,6vw,5rem)] font-extrabold text-neutral-100 leading-none tracking-[-0.04em] group-hover:text-orange-100 transition-colors">
+                      {s.num}
+                    </span>
+                    <div className="w-10 h-10 rounded-2xl border border-neutral-200 flex items-center justify-center group-hover:border-orange-300 group-hover:bg-orange-50 transition-all">
+                      <s.icon size={18} strokeWidth={1.5} className="text-neutral-400 group-hover:text-orange-500 transition-colors" />
                     </div>
                   </div>
+                  <div>
+                    <h3 className="text-lg font-bold mb-2">{s.title}</h3>
+                    <p className="text-sm text-neutral-500 leading-relaxed">{s.desc}</p>
+                  </div>
+                </BentoCard>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-                  <a
-                    href="#waitlist"
-                    className={`block w-full py-3 px-6 rounded-xl font-semibold font-sans text-sm text-center transition-all mb-8 ${
-                      plan.popular
-                        ? 'bg-amber-500 text-stone-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20'
-                        : 'bg-white/[0.06] text-white hover:bg-white/[0.1] border border-white/[0.08]'
-                    }`}
-                  >
-                    {plan.cta}
-                  </a>
+      {/* ═══════ CTA — after how it works ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="rounded-2xl border border-orange-200 bg-orange-50/50 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div>
+              <h3 className="text-[clamp(1.3rem,2.5vw,2rem)] font-extrabold tracking-tight text-neutral-900 mb-2">
+                See what you&apos;re owed — in 30 seconds.
+              </h3>
+              <p className="text-sm text-neutral-500">Connect your inbox. We do the rest. No credit card, no commitment.</p>
+            </div>
+            <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-orange-500 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap shrink-0 shadow-lg shadow-orange-500/20">
+              Get Early Access <ArrowRight size={14} strokeWidth={2} />
+            </Magnetic>
+          </motion.div>
+        </div>
+      </section>
 
-                  <div className="space-y-3.5 flex-1">
+      {/* ═══════ 4. DARK ZONE — FEATURES BENTO ═══════ */}
+      <div ref={featuresRef} id="features">
+        <div className="px-6 py-32 md:py-40">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Title card — spans 2 cols */}
+              <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+                className="lg:col-span-2">
+                <div className="border border-orange-400/20 bg-orange-500/[0.06] rounded-2xl p-8 md:p-10 h-full min-h-[220px] flex flex-col justify-end">
+                  <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-300 mb-3">What we recover</p>
+                  <h2 className="text-[clamp(1.8rem,3.5vw,3rem)] font-extrabold text-white tracking-tight leading-[1.1]">
+                    Six ways we put<br />money back in<br />your pocket.
+                  </h2>
+                </div>
+              </motion.div>
+
+              {/* Feature cards — orange-tinted glass */}
+              {features.map((f, i) => {
+                const Icon = f.icon;
+                return (
+                  <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }} transition={{ delay: i * 0.06 }}>
+                    <div className="group border border-white/[0.08] bg-white/[0.04] rounded-2xl p-6 md:p-7 hover:border-orange-400/25 hover:bg-orange-500/[0.06] transition-all h-full min-h-[220px] flex flex-col justify-between">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 rounded-2xl border border-orange-400/20 bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+                          <Icon size={18} strokeWidth={1.5} className="text-orange-300" />
+                        </div>
+                        <span className="text-xs font-bold text-orange-300/60 tracking-wider">{f.stat}</span>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white mb-2 group-hover:text-orange-200 transition-colors">{f.title}</h3>
+                        <p className="text-sm text-white/50 leading-relaxed">{f.desc}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════ 5. TESTIMONIALS BENTO ═══════ */}
+      <section className="px-6 py-32">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-12">
+            Don&apos;t take our<br />word for it.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Big quote card */}
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              className="md:row-span-2">
+              <BentoCard className="h-full flex flex-col justify-between min-h-[360px]">
+                <div>
+                  <div className="flex gap-0.5 mb-6">
+                    {[...Array(5)].map((_, j) => <Star key={j} size={14} strokeWidth={1.5} className="fill-orange-400 text-orange-400" />)}
+                  </div>
+                  <p className="text-[clamp(1.3rem,2.5vw,1.8rem)] font-semibold leading-[1.35] tracking-tight mb-6">
+                    &ldquo;{testimonials[0].quote}&rdquo;
+                  </p>
+                </div>
+                <div className="flex items-center justify-between pt-5 border-t border-neutral-100">
+                  <div>
+                    <p className="font-bold text-sm">{testimonials[0].name}</p>
+                    <p className="text-sm text-neutral-400">{testimonials[0].loc}</p>
+                  </div>
+                  <span className="text-3xl font-extrabold text-orange-500">{testimonials[0].amount}</span>
+                </div>
+              </BentoCard>
+            </motion.div>
+
+            {/* Smaller quote cards */}
+            {testimonials.slice(1).map((t, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: 0.1 + i * 0.08 }}>
+                <BentoCard className="h-full flex flex-col justify-between">
+                  <p className="text-sm leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                    <div>
+                      <p className="font-bold text-sm">{t.name}</p>
+                      <p className="text-sm text-neutral-400">{t.loc}</p>
+                    </div>
+                    <span className="text-xl font-extrabold text-orange-500">{t.amount}</span>
+                  </div>
+                </BentoCard>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ CTA — after testimonials ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto">
+          <InlineCta
+            headline="Join Jake, Priya, Marcus, and 4,200+ others."
+            sub="Average user recovers $347 in their first month. What are you leaving on the table?"
+          />
+        </div>
+      </section>
+
+      {/* ═══════ COMPETITOR COMPARISON ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-10">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">Why Pocketed</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.03em] leading-[0.95]">
+              The others fell short.
+            </h2>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="border border-neutral-200 rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-3 px-6 py-3 border-b border-neutral-100 bg-neutral-50">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Service</span>
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Status</span>
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Limitation</span>
+            </div>
+            {[
+              { name: 'Earny', status: 'Shut down', note: 'Business model collapsed when retailers killed price protection', dead: true },
+              { name: 'Paribus', status: 'Absorbed', note: 'Now Capital One Shopping — restricted, not independent', dead: false },
+              { name: 'Rocket Money', status: '$6-12/mo', note: 'Subscription tracking only. Doesn\'t file claims for you.', dead: false },
+              { name: 'Settlemate', status: '$11.99/mo', note: 'Class-action settlements only. No price drops or returns.', dead: false },
+            ].map((c, i) => (
+              <div key={i} className="grid grid-cols-3 px-6 py-4 border-b border-neutral-100 last:border-0 items-center">
+                <span className="text-sm font-medium text-neutral-700">{c.name}</span>
+                <span className={`text-sm font-semibold ${c.dead ? 'text-red-500' : 'text-neutral-400'}`}>{c.status}</span>
+                <span className="text-sm text-neutral-500">{c.note}</span>
+              </div>
+            ))}
+            <div className="grid grid-cols-3 px-6 py-5 bg-orange-50 border-t border-orange-200 items-center">
+              <span className="text-sm font-bold text-orange-600">Pocketed</span>
+              <span className="text-sm font-bold text-green-600">$3.99/mo</span>
+              <span className="text-sm font-bold text-neutral-900">All 6 channels. 100% of your money.</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ═══════ 6. PRICING ═══════ */}
+      <section id="pricing" className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-3">
+            Pricing.
+          </h2>
+          <p className="text-neutral-500 mb-12">No cuts. You keep everything.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { name: 'Free', price: '$0', desc: 'See what you\'re missing', features: ['Track up to 5 purchases', 'See recovery opportunities', 'Self-file claims', 'Email support'], pop: false },
+              { name: 'Pro', price: '$3.99', desc: 'Full autopilot recovery', features: ['Unlimited purchase tracking', 'Auto-filed price drop claims', 'All 6 recovery channels', '48-hour return window alerts', '60-day money-back guarantee'], pop: true },
+              { name: 'Family', price: '$6.99', desc: 'Cover the whole household', features: ['Up to 5 email accounts', 'Unified family dashboard', 'Shared warranty vault', 'Everything in Pro'], pop: false },
+            ].map((plan, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.08 }}>
+                <div className={`relative rounded-2xl p-8 h-full ${
+                  plan.pop ? 'bg-neutral-900 text-white ring-1 ring-orange-500/30' : 'border border-neutral-200'
+                }`}>
+                  {plan.pop && <div className="absolute -top-2.5 left-6"><span className="px-2.5 py-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full tracking-wider">POPULAR</span></div>}
+                  <p className="text-[clamp(2.5rem,4vw,3.5rem)] font-extrabold tracking-[-0.03em] mb-1">{plan.price}<span className={`text-base font-medium ${plan.pop ? 'text-neutral-500' : 'text-neutral-400'}`}>/mo</span></p>
+                  <h3 className="text-lg font-bold mb-1">{plan.name}</h3>
+                  <p className={`text-sm mb-6 ${plan.pop ? 'text-neutral-400' : 'text-neutral-500'}`}>{plan.desc}</p>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    className={`w-full py-2.5 rounded-2xl font-semibold text-sm mb-6 ${
+                      plan.pop ? 'bg-orange-500 text-white hover:bg-orange-400' : 'bg-neutral-100 hover:bg-neutral-200'
+                    } transition-colors`}>{plan.pop ? 'Join Waitlist' : 'Start Free'}</motion.button>
+                  <div className="space-y-2.5">
                     {plan.features.map((f, j) => (
-                      <div key={j} className="flex items-start gap-3">
-                        <Check size={16} className={plan.popular ? 'text-amber-400 mt-0.5' : 'text-stone-600 mt-0.5'} />
-                        <span className="text-stone-400 font-sans text-sm">{f}</span>
+                      <div key={j} className="flex items-center gap-2">
+                        <Check size={13} strokeWidth={2} className={plan.pop ? 'text-orange-400' : 'text-orange-500'} />
+                        <span className={`text-sm ${plan.pop ? 'text-neutral-300' : 'text-neutral-600'}`}>{f}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-              </Reveal>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ================================================================== */}
-      {/* FAQ */}
-      {/* ================================================================== */}
-      <section id="faq" className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          <Reveal>
-            <div className="text-center mb-16">
-              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
-                Questions? Answers.
-              </h2>
-            </div>
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8">
-              {faqItems.map((item, i) => (
-                <AccordionItem key={i} question={item.question} answer={item.answer} />
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* FINAL CTA */}
-      {/* ================================================================== */}
-      <section className="relative py-24 md:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        {/* Gradient bg */}
-        <div className="absolute inset-0 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/[0.04] rounded-full blur-3xl" />
-
-        <div className="max-w-3xl mx-auto text-center relative z-10">
-          <Reveal>
-            <h2 className="font-sans text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6">
-              Stop leaving money
-              <br />
-              on the table.
-            </h2>
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <p className="font-sans text-lg text-stone-400 mb-10 max-w-xl mx-auto">
-              The average user finds $347 in their first scan. Join the waitlist and be the first to know when we launch.
-            </p>
-          </Reveal>
-
-          <Reveal delay={0.15}>
-            <div className="flex justify-center">
-              <WaitlistForm variant="dark" />
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* FOOTER */}
-      {/* ================================================================== */}
-      <footer className="border-t border-white/[0.05] bg-stone-950 py-12 px-4 sm:px-6 lg:px-8">
+      {/* ═══════ GUARANTEE BANNER ═══════ */}
+      <section className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            {/* Brand */}
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
-                  <span className="font-sans font-bold text-stone-950 text-xs">P</span>
-                </div>
-                <span className="font-sans font-bold text-white">Pocketed</span>
-              </div>
-              <p className="text-stone-500 font-sans text-sm leading-relaxed">
-                Get back what's rightfully yours. Built by Zamn Studios.
-              </p>
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="rounded-2xl border border-green-200 bg-green-50/50 p-8 md:p-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+              <Shield size={24} strokeWidth={1.5} className="text-green-600" />
             </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-extrabold text-neutral-900 mb-1">60-day money-back guarantee</h3>
+              <p className="text-sm text-neutral-500">If Pocketed doesn&apos;t recover more than your subscription cost, we refund every cent. No forms, no questions. You literally can&apos;t lose.</p>
+            </div>
+            <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-green-500 transition-colors whitespace-nowrap shrink-0">
+              Try Risk-Free <ArrowRight size={14} strokeWidth={2} />
+            </Magnetic>
+          </motion.div>
+        </div>
+      </section>
 
-            {/* Links */}
+      {/* ═══════ 7. FAQ + CTA SPLIT ═══════ */}
+      <section id="faq" className="px-6 pb-32">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* FAQ side */}
+          <div>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-8">
+              FAQ.
+            </h2>
+            {faqItems.map((item, i) => <Accordion key={i} q={item.q} a={item.a} />)}
+          </div>
+
+          {/* CTA side */}
+          <CtaForm />
+        </div>
+      </section>
+
+      {/* ═══════ 8. FOOTER ═══════ */}
+      <footer className="border-t border-neutral-200 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-lg bg-orange-500 flex items-center justify-center">
+                  <span className="text-white text-[9px] font-extrabold">P</span>
+                </div>
+                <span className="font-extrabold text-sm">Pocketed</span>
+              </div>
+              <p className="text-xs text-neutral-400">Get back what&apos;s rightfully yours.</p>
+            </div>
             {[
-              {
-                heading: 'Product',
-                links: [
-                  { label: 'How it Works', href: '#how' },
-                  { label: 'Features', href: '#features' },
-                  { label: 'Pricing', href: '#pricing' },
-                  { label: 'FAQ', href: '#faq' },
-                ],
-              },
-              {
-                heading: 'Company',
-                links: [
-                  { label: 'About', href: '#' },
-                  { label: 'Blog', href: '#' },
-                  { label: 'Contact', href: '#' },
-                ],
-              },
-              {
-                heading: 'Legal',
-                links: [
-                  { label: 'Privacy', href: '#' },
-                  { label: 'Terms', href: '#' },
-                ],
-              },
-            ].map((col) => (
-              <div key={col.heading}>
-                <p className="font-semibold text-white mb-4 font-sans text-sm">{col.heading}</p>
-                <ul className="space-y-2.5">
-                  {col.links.map((link) => (
-                    <li key={link.label}>
-                      <a href={link.href} className="text-stone-500 hover:text-white transition-colors font-sans text-sm">
-                        {link.label}
-                      </a>
-                    </li>
-                  ))}
+              { t: 'Product', ls: [['How it Works', '#how'], ['Features', '#features'], ['Pricing', '#pricing'], ['FAQ', '#faq']] },
+              { t: 'Company', ls: [['About', '#'], ['Blog', '#'], ['Contact', '#']] },
+              { t: 'Legal', ls: [['Privacy', '/privacy'], ['Terms', '/terms']] },
+            ].map(col => (
+              <div key={col.t}>
+                <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-3">{col.t}</p>
+                <ul className="space-y-2">
+                  {col.ls.map(([l, h]) => <li key={l}><a href={h} className="text-sm text-neutral-500 hover:text-orange-500 transition-colors">{l}</a></li>)}
                 </ul>
               </div>
             ))}
           </div>
-
-          <div className="border-t border-white/[0.05] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-stone-600 font-sans text-sm">
-              Built by{' '}
-              <a href="#" className="text-stone-500 hover:text-white transition-colors">
-                Zamn Studios
-              </a>
-            </p>
-            <p className="text-stone-600 font-sans text-sm">
-              &copy; 2026 Pocketed. All rights reserved.
-            </p>
+          <div className="border-t border-neutral-100 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-[11px] text-neutral-400">Built by <a href="#" className="text-neutral-500 hover:text-orange-500 transition-colors">Zamn Studios</a></p>
+            <p className="text-[11px] text-neutral-400">&copy; 2026 Pocketed. All rights reserved.</p>
           </div>
         </div>
       </footer>
