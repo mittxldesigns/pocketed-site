@@ -381,7 +381,7 @@ export default function V3() {
   ];
 
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
+    <div className="min-h-screen relative font-jakarta" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
       <ScrollBar />
       <Nav isDark={isDark} />
 

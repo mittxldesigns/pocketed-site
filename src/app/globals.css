@@ -1,31 +1,63 @@
 @import "tailwindcss";
 
+:root {
+  --color-primary-amber: #f59e0b;
+  --color-dark: #0c0a09;
+  --color-light-bg: #fafaf9;
+  --color-card-bg: #ffffff;
+  --color-text-primary: #0f172a;
+  --color-text-muted: #64748b;
+  --color-success-green: #059669;
+  --color-border: #e7e5e4;
+}
+
 @theme inline {
-  --font-sans: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Manrope", sans-serif;
+  --font-serif: "Manrope", sans-serif;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
-body {
-  font-family: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  /* bg transitions handled by scroll-driven DarkZone components */
+::selection {
+  background-color: #f59e0b;
+  color: #0f172a;
 }
 
-::selection {
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0c0a09;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #292524;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #44403c;
+}
+
+/* v2/v3 landing pages — Plus Jakarta Sans + light scrollbar */
+.font-jakarta {
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+}
+.font-jakarta ::selection {
   background-color: #F97316;
   color: #fff;
 }
+.font-jakarta ::-webkit-scrollbar { width: 5px; }
+.font-jakarta ::-webkit-scrollbar-track { background: #fafafa; }
+.font-jakarta ::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
+.font-jakarta ::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #fafafa; }
-::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
-
-/* Dot grid pattern */
-.dot-grid {
-  background-image: radial-gradient(circle, #e5e5e5 1px, transparent 1px);
-  background-size: 24px 24px;
+.grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' result='noise' /%3E%3C/filter%3E%3Crect width='400' height='400' fill='%23000000' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  pointer-events: none;
 }

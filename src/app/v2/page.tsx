@@ -520,7 +520,7 @@ export default function V2() {
   ];
 
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
+    <div className="min-h-screen relative font-jakarta" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#fff' : '#0a0a0a' }}>
       <StickyBar />
       <ScrollBar />
       <Nav onLogoClick={() => {}} isDark={isDark} />

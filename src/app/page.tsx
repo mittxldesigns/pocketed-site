@@ -1,656 +1,1049 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useInView } from 'framer-motion';
 import {
-  motion, useInView, useScroll, useTransform, useSpring, useMotionValue,
-} from 'framer-motion';
-import {
-  TrendingDown, Clock, CreditCard, Shield, Truck, Wifi,
-  ChevronDown, Star, ArrowUpRight, ArrowRight, Check,
-  Menu, X, Zap, Mail, BarChart3, Sparkles,
+  TrendingDown,
+  Clock,
+  CreditCard,
+  Shield,
+  Truck,
+  Wifi,
+  ChevronDown,
+  ArrowRight,
+  Check,
+  Mail,
+  Zap,
+  Eye,
+  X,
+  ArrowUpRight,
+  Sparkles,
 } from 'lucide-react';
 
-/* ═══════════ BRAND TOKENS ═══════════ */
-const brand = {
-  accent: '#F97316',
-  dark: '#0a0a0a',
-  card: 'bg-white border border-neutral-200',
-  cardDark: 'bg-white/[0.05] border border-white/[0.08]',
-  radius: 'rounded-2xl',
-  iconBox: 'w-10 h-10 rounded-2xl flex items-center justify-center',
-};
-
-/* ═══════════ MOUSE GRADIENT ═══════════ */
-function MouseGlow() {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  useEffect(() => {
-    const h = (e: MouseEvent) => { x.set(e.clientX); y.set(e.clientY); };
-    window.addEventListener('mousemove', h);
-    return () => window.removeEventListener('mousemove', h);
-  }, [x, y]);
-
-  return (
-    <motion.div className="fixed inset-0 pointer-events-none z-0"
-      style={{
-        background: useTransform([x, y], ([lx, ly]: number[]) =>
-          `radial-gradient(500px circle at ${lx}px ${ly}px, rgba(249,115,22,0.04), transparent 50%)`
-        ),
-      }}
-    />
-  );
-}
-
-/* ═══════════ COIN RAIN (no emojis — uses Sparkles icon) ═══════════ */
-function CoinRain({ active, onDone }: { active: boolean; onDone: () => void }) {
-  useEffect(() => { if (active) { const t = setTimeout(onDone, 2200); return () => clearTimeout(t); } }, [active, onDone]);
-  if (!active) return null;
-  return (
-    <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
-      {Array.from({ length: 24 }).map((_, i) => (
-        <motion.div key={i}
-          initial={{ y: -30, x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth : 1200), opacity: 0.7 }}
-          animate={{ y: (typeof window !== 'undefined' ? window.innerHeight : 800) + 30, opacity: [0.7, 0.7, 0] }}
-          transition={{ duration: 1.6 + Math.random(), delay: Math.random() * 0.5, ease: 'easeIn' }}
-          className="absolute"
-        >
-          <Sparkles size={14 + Math.random() * 10} className="text-orange-400" strokeWidth={1.5} />
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-
-/* ═══════════ SCROLL TEXT HIGHLIGHT ═══════════ */
-function ScrollHighlight({ text }: { text: string }) {
-  const ref = useRef<HTMLParagraphElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.8', 'end 0.3'] });
-  const words = text.split(' ');
-  return (
-    <p ref={ref} className="text-[clamp(1.4rem,3.2vw,2.5rem)] font-semibold leading-[1.4] tracking-tight">
-      {words.map((word, i) => {
-        const s = i / words.length, e = s + 1 / words.length;
-        return <ScrollWord key={i} word={word} progress={scrollYProgress} start={s} end={e} />;
-      })}
-    </p>
-  );
-}
-
-function ScrollWord({ word, progress, start, end }: {
-  word: string; progress: ReturnType<typeof useScroll>['scrollYProgress']; start: number; end: number;
+// ============================================================================
+// ANIMATED NUMBER (counts up when in view)
+// ============================================================================
+function AnimatedNumber({
+  value,
+  duration = 2,
+  prefix = '',
+  suffix = '',
+}: {
+  value: number;
+  duration?: number;
+  prefix?: string;
+  suffix?: string;
 }) {
-  const opacity = useTransform(progress, [start, end], [0.12, 1]);
-  return <motion.span style={{ opacity }} className="text-neutral-900 inline-block mr-[0.3em]">{word}</motion.span>;
-}
-
-/* ═══════════ 3D TILT ═══════════ */
-function Tilt({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const rx = useMotionValue(0), ry = useMotionValue(0);
-  const sx = useSpring(rx, { stiffness: 200, damping: 20 });
-  const sy = useSpring(ry, { stiffness: 200, damping: 20 });
-  const onMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    ry.set(((e.clientX - r.left) / r.width - 0.5) * 6);
-    rx.set(-((e.clientY - r.top) / r.height - 0.5) * 6);
-  };
-  const onLeave = () => { rx.set(0); ry.set(0); };
-  return (
-    <motion.div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave}
-      style={{ rotateX: sx, rotateY: sy, transformPerspective: 800 }} className={className}>
-      {children}
-    </motion.div>
-  );
-}
-
-/* ═══════════ MAGNETIC BUTTON ═══════════ */
-function Magnetic({ children, href, className = '' }: { children: React.ReactNode; href: string; className?: string }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const mx = useMotionValue(0), my = useMotionValue(0);
-  const sx = useSpring(mx, { stiffness: 300, damping: 15 });
-  const sy = useSpring(my, { stiffness: 300, damping: 15 });
-  const onMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    mx.set((e.clientX - r.left - r.width / 2) * 0.12);
-    my.set((e.clientY - r.top - r.height / 2) * 0.12);
-  };
-  const onLeave = () => { mx.set(0); my.set(0); };
-  return (
-    <motion.a ref={ref} href={href} onMouseMove={onMove} onMouseLeave={onLeave}
-      style={{ x: sx, y: sy }} className={className}>{children}</motion.a>
-  );
-}
-
-/* ═══════════ COUNTER ═══════════ */
-function Counter({ value, prefix = '', suffix = '' }: { value: number; prefix?: string; suffix?: string }) {
-  const [n, setN] = useState(0);
+  const [display, setDisplay] = useState(0);
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true });
+  const isInView = useInView(ref, { once: true });
+
   useEffect(() => {
-    if (!inView) return;
-    let s: number | null = null, raf: number;
-    const step = (t: number) => {
-      if (s === null) s = t;
-      const p = Math.min((t - s) / 1800, 1);
-      const eased = 1 - Math.pow(1 - p, 4);
-      setN(Math.round(eased * value));
+    if (!isInView) return;
+    let start: number | null = null;
+    let raf: number;
+    const step = (ts: number) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / (duration * 1000), 1);
+      // ease out cubic
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.floor(eased * value));
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
-  }, [inView, value]);
-  return <span ref={ref}>{prefix}{n.toLocaleString()}{suffix}</span>;
+  }, [isInView, value, duration]);
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {display.toLocaleString()}
+      {suffix}
+    </span>
+  );
 }
 
-/* ═══════════ ACCORDION ═══════════ */
-function Accordion({ q, a }: { q: string; a: string }) {
+// ============================================================================
+// ACCORDION FAQ
+// ============================================================================
+function AccordionItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-neutral-200">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between text-left py-5 group">
-        <span className="text-[15px] font-semibold text-neutral-900 group-hover:text-orange-600 transition-colors pr-8">{q}</span>
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ChevronDown size={16} strokeWidth={1.5} className="text-neutral-400" />
+    <div className="border-b border-white/[0.08] last:border-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-left py-6 group"
+      >
+        <h3 className="font-sans text-lg font-semibold text-white group-hover:text-amber-400 transition-colors pr-4">
+          {question}
+        </h3>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }}>
+          <ChevronDown size={18} className="text-stone-400 flex-shrink-0" />
         </motion.div>
       </button>
-      <motion.div initial={false} animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }} transition={{ duration: 0.3 }} className="overflow-hidden">
-        <p className="pb-5 text-sm text-neutral-500 leading-relaxed">{a}</p>
+      <motion.div
+        initial={false}
+        animate={{ height: open ? 'auto' : 0, opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.25 }}
+        className="overflow-hidden"
+      >
+        <p className="pb-6 text-stone-400 font-sans leading-relaxed">{answer}</p>
       </motion.div>
     </div>
   );
 }
 
-/* ═══════════ NAV ═══════════ */
-function Nav({ onLogoClick, isDark }: { onLogoClick: () => void; isDark: boolean }) {
+// ============================================================================
+// WAITLIST FORM
+// ============================================================================
+function WaitlistForm({ variant = 'light' }: { variant?: 'light' | 'dark' }) {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (res.ok) {
+        setSubmitted(true);
+        setTimeout(() => {
+          setEmail('');
+          setSubmitted(false);
+        }, 4000);
+      } else {
+        const data = await res.json();
+        setError(data.message || 'Something went wrong');
+      }
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isDark = variant === 'dark';
+
+  if (submitted) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`inline-flex items-center gap-2 px-6 py-3.5 rounded-full text-sm font-semibold ${
+          isDark ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+        }`}
+      >
+        <Check size={16} />
+        You're on the list. We'll be in touch.
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-lg">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full">
+        <div className="flex-1 relative">
+          <Mail
+            className={`absolute left-4 top-1/2 -translate-y-1/2 ${isDark ? 'text-stone-500' : 'text-stone-400'}`}
+            size={18}
+          />
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+            required
+            className={`w-full pl-11 pr-4 py-3.5 rounded-xl font-sans text-sm transition-all outline-none disabled:opacity-50 ${
+              isDark
+                ? 'bg-white/5 border border-white/10 text-white placeholder-stone-500 focus:border-amber-500/50 focus:bg-white/[0.07]'
+                : 'bg-white border border-stone-200 text-stone-950 placeholder-stone-400 focus:border-amber-500 focus:shadow-sm'
+            }`}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-7 py-3.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 rounded-xl font-semibold font-sans text-sm transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-amber-500/20 hover:shadow-amber-400/30"
+        >
+          {loading ? 'Joining...' : 'Get Early Access'}
+          {!loading && <ArrowRight size={16} />}
+        </button>
+      </form>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`text-sm mt-2 ${isDark ? 'text-red-400' : 'text-red-600'}`}
+        >
+          {error}
+        </motion.p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// FLOATING DASHBOARD MOCKUP (hero right side)
+// ============================================================================
+function DashboardMockup() {
+  const items = [
+    { label: 'Amazon — Price Drop', amount: '+$23.47', time: '2h ago', color: 'text-emerald-400' },
+    { label: 'Netflix — Unused Sub', amount: '+$15.99/mo', time: '1d ago', color: 'text-amber-400' },
+    { label: 'Best Buy — Warranty Claim', amount: '+$189.00', time: '3d ago', color: 'text-emerald-400' },
+    { label: 'FedEx — Late Delivery', amount: '+$12.50', time: '5d ago', color: 'text-emerald-400' },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 1, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="relative"
+    >
+      {/* Glow */}
+      <div className="absolute -inset-10 bg-amber-500/5 rounded-full blur-3xl" />
+
+      <div className="relative bg-stone-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl w-full max-w-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+              <span className="font-sans font-bold text-stone-950 text-xs">P</span>
+            </div>
+            <div>
+              <p className="text-white font-semibold text-sm">This Month</p>
+              <p className="text-stone-500 text-xs">March 2026</p>
+            </div>
+          </div>
+          <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+            +12 recoveries
+          </span>
+        </div>
+
+        {/* Total */}
+        <div className="mb-6">
+          <p className="text-stone-500 text-xs mb-1 font-medium">Total Recovered</p>
+          <p className="text-3xl font-bold text-white">
+            $<AnimatedNumber value={847} duration={2.5} />
+            <span className="text-stone-500 text-lg">.23</span>
+          </p>
+          <div className="mt-3 w-full bg-stone-800 rounded-full h-1.5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: '72%' }}
+              transition={{ duration: 1.5, delay: 1, ease: 'easeOut' }}
+              className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full"
+            />
+          </div>
+        </div>
+
+        {/* Recovery items */}
+        <div className="space-y-3">
+          {items.map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 0.8 + i * 0.15 }}
+              className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+            >
+              <div>
+                <p className="text-white text-sm font-medium">{item.label}</p>
+                <p className="text-stone-500 text-xs">{item.time}</p>
+              </div>
+              <span className={`text-sm font-semibold ${item.color}`}>{item.amount}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// NAV
+// ============================================================================
+function Nav() {
   const [scrolled, setScrolled] = useState(false);
+
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', h);
-    return () => window.removeEventListener('scroll', h);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-      scrolled
-        ? isDark
-          ? 'bg-neutral-950/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(255,255,255,0.04)]'
-          : 'bg-white/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.04)]'
-        : ''
-    }`}>
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <button onClick={onLogoClick} className="flex items-center gap-2 group">
-          <motion.div whileHover={{ rotate: [0, -8, 8, 0] }} transition={{ duration: 0.4 }}
-            className="w-8 h-8 rounded-2xl bg-orange-500 flex items-center justify-center group-hover:shadow-lg group-hover:shadow-orange-500/25 transition-shadow">
-            <span className="font-extrabold text-sm text-white">P</span>
-          </motion.div>
-          <span className={`font-extrabold text-[15px] transition-colors duration-500 ${isDark ? 'text-white' : 'text-neutral-900'}`}>Pocketed</span>
-        </button>
-        <div className="hidden md:flex items-center gap-8">
-          {[['How it Works', '#how'], ['Features', '#features'], ['Pricing', '#pricing'], ['FAQ', '#faq']].map(([l, h]) => (
-            <a key={l} href={h} className={`text-[13px] font-medium relative group transition-colors duration-500 ${
-              isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
-            }`}>
-              {l}
-              <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-orange-500 group-hover:w-full transition-all duration-300" />
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-stone-950/80 backdrop-blur-xl border-b border-white/5' : ''
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+              <span className="font-sans font-bold text-stone-950 text-sm">P</span>
+            </div>
+            <span className="font-sans font-bold text-white text-lg">Pocketed</span>
+          </div>
+
+          {/* Links */}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#how" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
+              How it Works
             </a>
-          ))}
+            <a href="#features" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
+              Features
+            </a>
+            <a href="#pricing" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
+              Pricing
+            </a>
+            <a href="#faq" className="text-stone-400 hover:text-white transition-colors font-sans text-sm">
+              FAQ
+            </a>
+          </div>
+
+          <a
+            href="#waitlist"
+            className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-lg font-semibold font-sans text-sm transition-all"
+          >
+            Join Waitlist
+          </a>
         </div>
-        <Magnetic href="#cta" className={`hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[13px] font-semibold transition-colors duration-500 ${
-          isDark ? 'bg-white text-neutral-900 hover:bg-neutral-200' : 'bg-neutral-900 text-white hover:bg-neutral-800'
-        }`}>
-          Join Waitlist <ArrowUpRight size={12} strokeWidth={2} />
-        </Magnetic>
       </div>
     </nav>
   );
 }
 
-/* ═══════════ SCROLL PROGRESS ═══════════ */
-function ScrollBar() {
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
-  return <motion.div className="fixed top-0 left-0 right-0 h-[2px] bg-orange-500 origin-left z-[60]" style={{ scaleX }} />;
+// ============================================================================
+// SECTION REVEAL WRAPPER
+// ============================================================================
+function Reveal({
+  children,
+  delay = 0,
+  className = '',
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: '-80px' });
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.7, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
-/* ═══════════ PAGE-LEVEL BG TRANSITION ═══════════
- * Instead of per-section bg changes, this hook watches dark zone refs
- * and returns a framer-motion backgroundColor value that applies to
- * the ROOT wrapper — so the entire viewport changes color.
- */
-function usePageBg(darkRefs: React.RefObject<HTMLDivElement | null>[]) {
-  const [bg, setBg] = useState('#ffffff');
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      let closestDarkness = 0; // 0 = fully light, 1 = fully dark
-
-      darkRefs.forEach((ref) => {
-        if (!ref.current) return;
-        const rect = ref.current.getBoundingClientRect();
-        const vh = window.innerHeight;
-
-        // How much of the viewport is this dark section covering?
-        const visibleTop = Math.max(0, rect.top);
-        const visibleBottom = Math.min(vh, rect.bottom);
-        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
-        const coverage = visibleHeight / vh;
-
-        // Also factor in how far the section has entered
-        // When top is at bottom of viewport → 0
-        // When top is at top of viewport → 1
-        const entry = 1 - Math.max(0, Math.min(1, rect.top / vh));
-
-        const darkness = Math.min(coverage * 1.5, 1) * Math.min(entry * 2, 1);
-        closestDarkness = Math.max(closestDarkness, darkness);
-      });
-
-      // Interpolate between white and dark
-      const r = Math.round(255 - closestDarkness * 245); // 255 → 10
-      const hex = `#${r.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}${r.toString(16).padStart(2, '0')}`;
-      setBg(hex);
-      setIsDark(closestDarkness > 0.5);
-    };
-
-    window.addEventListener('scroll', check, { passive: true });
-    check();
-    return () => window.removeEventListener('scroll', check);
-  }, [darkRefs]);
-
-  return { bg, isDark };
-}
-
-/* ═══════════ MAIN ═══════════ */
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
 export default function Home() {
-  const [coinRain, setCoinRain] = useState(false);
-  const featuresRef = useRef<HTMLDivElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const { bg: pageBg, isDark } = usePageBg([featuresRef]);
-  const heroRef = useRef(null);
-  const { scrollYProgress: heroP } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroO = useTransform(heroP, [0, 0.7], [1, 0]);
-  const heroY = useTransform(heroP, [0, 0.7], [0, 50]);
-
   const features = [
-    { icon: TrendingDown, title: 'Price Drop Recovery', desc: 'Prices fall after you buy. We file the claim.', stat: '$23 avg' },
-    { icon: Clock, title: 'Return Deadline Alerts', desc: 'Get nudged before your return window closes.', stat: 'Never miss' },
-    { icon: CreditCard, title: 'Subscription Audit', desc: "Find charges you forgot. See what's draining you.", stat: '$94/mo' },
-    { icon: Shield, title: 'Warranty Tracker', desc: 'Every warranty organized by expiry. Never lose one.', stat: '200+ brands' },
-    { icon: Truck, title: 'Late Delivery Credits', desc: "If they're late, you're owed money. Auto-filed.", stat: 'Automatic' },
-    { icon: Wifi, title: 'Outage Credits', desc: 'ISP went down? We calculate your prorated credit.', stat: '40+ ISPs' },
+    {
+      icon: TrendingDown,
+      title: 'Price Drop Recovery',
+      description: 'We monitor every purchase. When prices fall within the store\'s adjustment window, we file the claim automatically.',
+      stat: 'Avg $23 per claim',
+      large: true,
+    },
+    {
+      icon: CreditCard,
+      title: 'Subscription Audit',
+      description: 'Spot recurring charges you forgot about. See what you actually use vs. what\'s silently draining your wallet.',
+      stat: 'Avg $94/mo found',
+      large: true,
+    },
+    {
+      icon: Clock,
+      title: 'Return Deadline Alerts',
+      description: 'Policies from 200+ retailers. Get alerts 7, 3, and 1 day before your return window closes.',
+      stat: 'Never miss a return',
+    },
+    {
+      icon: Shield,
+      title: 'Warranty Tracker',
+      description: 'Every warranty, extracted and organized by expiry. Pre-fills claim forms when something breaks.',
+      stat: '200+ brands tracked',
+    },
+    {
+      icon: Truck,
+      title: 'Late Delivery Credits',
+      description: 'Amazon Prime, FedEx Express, UPS guarantees — if they\'re late, you\'re owed money.',
+      stat: 'Auto-filed claims',
+    },
+    {
+      icon: Wifi,
+      title: 'Outage Credits',
+      description: 'ISP went down? Streaming service had issues? We calculate and help you claim your prorated credit.',
+      stat: '40+ providers',
+    },
   ];
 
-  const testimonials = [
-    { name: 'Jake M.', loc: 'Austin, TX', amount: '$347', quote: 'Found $347 in price drops I had no idea about.' },
-    { name: 'Priya S.', loc: 'Seattle, WA', amount: '$41/mo', quote: "Three streaming services I hadn't opened in months." },
-    { name: 'Marcus T.', loc: 'Chicago, IL', amount: '$1,200', quote: 'Laptop warranty expiring — got a full replacement.' },
-    { name: 'Sarah K.', loc: 'Denver, CO', amount: '$89', quote: 'Late Amazon deliveries I never thought to claim.' },
-    { name: 'David L.', loc: 'NYC, NY', amount: '$156', quote: 'ISP outage credits I had no clue existed.' },
+  const competitors = [
+    { name: 'Earny', status: 'Shut down', note: 'Business model collapsed when retailers killed price protection' },
+    { name: 'Paribus', status: 'Absorbed', note: 'Now Capital One Shopping — restricted, not independent' },
+    { name: 'Rocket Money', status: '$6-12/mo', note: 'Subscription tracking only. Doesn\'t file claims for you.' },
+    { name: 'Settlemate', status: '$11.99/mo', note: 'Class-action settlements only. No price drops or returns.' },
   ];
 
   const faqItems = [
-    { q: 'Is my email data safe?', a: 'Bank-level encryption. We never store emails. OAuth only — we never see your password.' },
-    { q: 'How does Pocketed make money?', a: 'Monthly subscription. No percentage cuts. You keep 100% of recovered money.' },
-    { q: "What if I don't recover enough?", a: '60-day money-back guarantee. If you don\'t recover $3.99 in value, full refund.' },
-    { q: 'Which stores do you support?', a: '200+ retailers: Amazon, Target, Best Buy, Walmart, plus streaming and ISPs.' },
-    { q: 'Do you file claims for me?', a: 'Yes — Pro and Family plans auto-file price drop claims and handle retailer interactions.' },
+    {
+      question: 'Is my email data safe?',
+      answer: 'We use bank-level encryption and never store your emails. We scan for receipt-related data only and use OAuth — your credentials never touch our servers.',
+    },
+    {
+      question: 'How does Pocketed make money?',
+      answer: 'Simple flat subscription. No percentage cuts of your refunds, no hidden fees. You keep 100% of every dollar recovered. We\'re incentivized to get you as much as possible.',
+    },
+    {
+      question: 'What if I don\'t recover enough to justify the cost?',
+      answer: '60-day money-back guarantee on Pro. We\'re confident you\'ll recover at least $3.99 in two months — the average user finds $347+ in their first scan.',
+    },
+    {
+      question: 'Which stores do you support?',
+      answer: 'Over 200 US retailers including Amazon, Target, Best Buy, Walmart, plus streaming services, ISPs, and carriers. Our database grows every week.',
+    },
+    {
+      question: 'Do you actually file claims for me?',
+      answer: 'With Pro and Family plans, yes — we auto-file price drop claims and handle most retailer interactions. For other types, we generate pre-written scripts and walk you through it.',
+    },
+    {
+      question: 'What happened to other refund apps like Earny?',
+      answer: 'Most either shut down (Earny), got acquired and restricted (Paribus to Capital One), or only cover one category. Pocketed is the only all-in-one recovery tool at an affordable price.',
+    },
   ];
 
-  const handleDone = useCallback(() => setCoinRain(false), []);
+  const testimonials = [
+    {
+      name: 'Jake M.',
+      role: 'Software Engineer',
+      location: 'Austin, TX',
+      amount: '$347',
+      quote: 'Found $347 in price drops I had no idea about. This thing paid for itself in the first week.',
+    },
+    {
+      name: 'Priya S.',
+      role: 'Product Manager',
+      location: 'Seattle, WA',
+      amount: '$41/mo',
+      quote: 'I was paying for three streaming services I hadn\'t opened in months. Pocketed flagged all of them.',
+    },
+    {
+      name: 'Marcus T.',
+      role: 'Freelance Designer',
+      location: 'Chicago, IL',
+      amount: '$1,200',
+      quote: 'My laptop warranty was about to expire and I had a dead pixel. Got a full replacement worth $1,200.',
+    },
+  ];
 
   return (
-    <div className="min-h-screen relative" style={{ backgroundColor: pageBg, transition: 'color 0.3s', color: isDark ? '#ffffff' : '#0a0a0a' }}>
-      <MouseGlow />
-      <CoinRain active={coinRain} onDone={handleDone} />
-      <ScrollBar />
-      <Nav onLogoClick={() => setCoinRain(true)} isDark={isDark} />
+    <div className="bg-stone-950 min-h-screen overflow-hidden">
+      <Nav />
 
-      {/* ══════ HERO ══════ */}
-      <section ref={heroRef} className="relative pt-28 pb-16 md:pt-36 md:pb-24 overflow-hidden">
-        <motion.div style={{ opacity: heroO, y: heroY }} className="max-w-6xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      {/* ================================================================== */}
+      {/* HERO */}
+      {/* ================================================================== */}
+      <section className="relative min-h-screen flex items-center pt-16 overflow-hidden">
+        {/* Background gradient */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-stone-950 via-stone-950 to-stone-900" />
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-amber-500/[0.03] rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-amber-500/[0.02] rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+          {/* Grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
+              backgroundSize: '60px 60px',
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-20 md:py-32">
+          <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+            {/* Left — Copy */}
             <div>
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-orange-50 border border-orange-200 mb-6">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                <span className="text-xs font-semibold text-orange-700">Now accepting early access</span>
+              {/* Badge */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="mb-8"
+              >
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full">
+                  <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-amber-300">
+                    Early access — now open
+                  </span>
+                </div>
               </motion.div>
 
-              <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }}
-                className="text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.1] tracking-[-0.025em] text-neutral-900 mb-5">
-                Companies owe you money.{' '}
-                <span className="text-orange-500">We get it back.</span>
+              {/* Headline */}
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="font-sans text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] text-white mb-6"
+              >
+                Companies owe
+                <br />
+                you money.
+                <br />
+                <span className="text-amber-400">We get it back.</span>
               </motion.h1>
 
-              <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.25 }}
-                className="text-base text-neutral-500 max-w-md mb-8 leading-relaxed">
-                Pocketed scans your purchases, finds what you&apos;re owed, and recovers the cash — automatically.
+              {/* Sub */}
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.2 }}
+                className="font-sans text-lg text-stone-400 max-w-lg mb-10 leading-relaxed"
+              >
+                Pocketed connects to your email, finds price drops, missed returns,
+                forgotten subscriptions, and expiring warranties — then recovers the cash.
               </motion.p>
 
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.35 }}
-                className="flex flex-wrap items-center gap-4 mb-8">
-                <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-neutral-900 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-neutral-800 transition-colors hover:shadow-lg hover:shadow-neutral-900/15">
-                  Get Early Access <ArrowRight size={14} strokeWidth={2} />
-                </Magnetic>
-                <a href="#how" className="text-neutral-500 hover:text-neutral-900 text-sm font-medium transition-colors flex items-center gap-1.5 group">
-                  See how it works
-                  <ArrowUpRight size={13} strokeWidth={2} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </a>
+              {/* Form */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                id="waitlist"
+              >
+                <WaitlistForm variant="dark" />
               </motion.div>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.5 }}
-                className="flex items-center gap-3 pt-6 border-t border-neutral-100">
-                <div className="flex -space-x-2">
-                  {['bg-orange-400', 'bg-rose-400', 'bg-violet-400', 'bg-sky-400'].map((c, i) => (
-                    <div key={i} className={`w-7 h-7 rounded-full ${c} border-2 border-white flex items-center justify-center text-white text-[9px] font-bold`}>
-                      {['J', 'P', 'M', 'S'][i]}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5">
-                    {[...Array(5)].map((_, i) => <Star key={i} size={11} className="fill-orange-400 text-orange-400" strokeWidth={1.5} />)}
-                  </div>
-                  <span className="text-xs text-neutral-400">4,200+ on the waitlist</span>
-                </div>
-              </motion.div>
+              {/* Trust line */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="mt-5 text-stone-500 text-sm font-sans"
+              >
+                Free to join. No credit card required.
+              </motion.p>
             </div>
 
-            {/* Dashboard mockup */}
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}>
-              <Tilt className="cursor-default">
-                <div className={`${brand.card} ${brand.radius} p-5 md:p-6 shadow-xl shadow-neutral-200/50`}>
-                  <div className="flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                      <div className={`${brand.iconBox} bg-orange-500`}>
-                        <Zap size={16} className="text-white" strokeWidth={1.5} />
+            {/* Right — Dashboard */}
+            <div className="hidden lg:flex justify-end">
+              <DashboardMockup />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* LOGO BAR — retailers tracked */}
+      {/* ================================================================== */}
+      <section className="border-y border-white/5 bg-stone-950 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-center text-stone-500 text-xs font-semibold uppercase tracking-widest mb-6">
+            Tracking policies from 200+ retailers
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+            {['Amazon', 'Target', 'Best Buy', 'Walmart', 'Apple', 'Nike', 'Home Depot', 'Costco', 'Nordstrom', 'Sephora'].map(
+              (name) => (
+                <span key={name} className="text-stone-600 font-sans font-semibold text-sm tracking-wide">
+                  {name}
+                </span>
+              )
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* STATS */}
+      {/* ================================================================== */}
+      <section className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+            {[
+              { value: 48, prefix: '$', suffix: 'B+', label: 'Left on the table annually by US consumers' },
+              { value: 200, suffix: '+', label: 'Retailer policies tracked and updated weekly' },
+              { value: 347, prefix: '$', label: 'Average recovered per user in first scan' },
+              { value: 6, label: 'Recovery channels working for you simultaneously' },
+            ].map((stat, i) => (
+              <Reveal key={i} delay={i * 0.08}>
+                <div className="text-center">
+                  <p className="font-sans text-4xl md:text-5xl font-extrabold text-white mb-2">
+                    <AnimatedNumber value={stat.value} prefix={stat.prefix || ''} suffix={stat.suffix || ''} />
+                  </p>
+                  <p className="font-sans text-stone-500 text-sm">{stat.label}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* HOW IT WORKS */}
+      {/* ================================================================== */}
+      <section id="how" className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
+                How it works
+              </p>
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                Three steps. Real money back.
+              </h2>
+            </div>
+          </Reveal>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                num: '01',
+                icon: Mail,
+                title: 'Connect your email',
+                desc: 'Securely link Gmail or Outlook with OAuth. We only scan receipts — never personal emails. Your credentials never touch our servers.',
+              },
+              {
+                num: '02',
+                icon: Eye,
+                title: 'We scan for money owed',
+                desc: 'Our AI parses purchases, tracks price drops, flags expiring returns, audits subscriptions, and checks warranties — all automatically.',
+              },
+              {
+                num: '03',
+                icon: Zap,
+                title: 'Cash comes back to you',
+                desc: 'We auto-file claims or give you pre-written scripts. You keep 100% of every dollar recovered. No percentage cuts, ever.',
+              },
+            ].map((step, i) => (
+              <Reveal key={i} delay={i * 0.1}>
+                <div className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300 h-full">
+                  {/* Number */}
+                  <span className="font-sans text-5xl font-extrabold text-white/[0.04] absolute top-6 right-6">
+                    {step.num}
+                  </span>
+
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 group-hover:bg-amber-500/15 transition-colors">
+                    <step.icon size={22} className="text-amber-400" />
+                  </div>
+
+                  <h3 className="font-sans text-xl font-bold text-white mb-3">{step.title}</h3>
+                  <p className="font-sans text-stone-400 leading-relaxed">{step.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* FEATURES — BENTO GRID */}
+      {/* ================================================================== */}
+      <section id="features" className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
+                Recovery channels
+              </p>
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                Six ways we put money
+                <br />
+                back in your pocket
+              </h2>
+            </div>
+          </Reveal>
+
+          {/* Bento layout: 2 large on top, 4 small below */}
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            {features
+              .filter((f) => f.large)
+              .map((f, i) => (
+                <Reveal key={i} delay={i * 0.1}>
+                  <div className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 md:p-10 hover:bg-white/[0.05] hover:border-white/[0.1] transition-all duration-300 h-full">
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:bg-amber-500/15 transition-colors">
+                        <f.icon size={22} className="text-amber-400" />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-neutral-900">Total Recovered</p>
-                        <p className="text-[11px] text-neutral-400">Last 30 days</p>
-                      </div>
+                      <span className="text-xs font-semibold text-amber-400/80 bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/20">
+                        {f.stat}
+                      </span>
                     </div>
-                    <span className="px-2.5 py-1 rounded-2xl bg-emerald-50 text-emerald-600 text-[11px] font-bold">+12%</span>
+                    <h3 className="font-sans text-2xl font-bold text-white mb-3">{f.title}</h3>
+                    <p className="font-sans text-stone-400 leading-relaxed text-lg">{f.description}</p>
                   </div>
-                  <p className="text-4xl font-extrabold text-neutral-900 mb-5">$<Counter value={347} /><span className="text-neutral-300">.00</span></p>
-                  <div className="flex items-end gap-1 h-14 mb-5">
-                    {[35, 50, 30, 65, 45, 80, 55, 90, 40, 70, 60, 95].map((h, i) => (
-                      <motion.div key={i} initial={{ height: 0 }} animate={{ height: `${h}%` }}
-                        transition={{ duration: 0.4, delay: 0.5 + i * 0.04, type: 'spring', bounce: 0.25 }}
-                        className="flex-1 rounded-sm bg-orange-500/80 hover:bg-orange-500 transition-colors cursor-default"
-                      />
-                    ))}
+                </Reveal>
+              ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features
+              .filter((f) => !f.large)
+              .map((f, i) => (
+                <Reveal key={i} delay={i * 0.08}>
+                  <div className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 hover:bg-white/[0.05] hover:border-white/[0.1] transition-all duration-300 h-full">
+                    <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 group-hover:bg-amber-500/15 transition-colors">
+                      <f.icon size={18} className="text-amber-400" />
+                    </div>
+                    <h3 className="font-sans text-base font-bold text-white mb-2">{f.title}</h3>
+                    <p className="font-sans text-stone-500 text-sm leading-relaxed">{f.description}</p>
+                    <p className="mt-3 text-xs font-semibold text-amber-400/70">{f.stat}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {[
-                      { label: 'Price drops', val: '$178', icon: TrendingDown, color: 'text-orange-500 bg-orange-50' },
-                      { label: 'Subscriptions', val: '$94', icon: CreditCard, color: 'text-neutral-600 bg-neutral-100' },
-                      { label: 'Returns', val: '$75', icon: Clock, color: 'text-neutral-600 bg-neutral-100' },
-                      { label: 'Warranties', val: '3 active', icon: Shield, color: 'text-neutral-600 bg-neutral-100' },
-                    ].map((m, i) => (
-                      <motion.div key={i} whileHover={{ y: -2 }} transition={{ type: 'spring', stiffness: 400 }}
-                        className={`bg-neutral-50 ${brand.radius} p-3.5 border border-neutral-100 cursor-default`}>
-                        <div className={`${brand.iconBox} ${m.color} mb-2 !w-7 !h-7`}>
-                          <m.icon size={13} strokeWidth={1.5} />
-                        </div>
-                        <p className="text-sm font-bold text-neutral-900">{m.val}</p>
-                        <p className="text-[11px] text-neutral-400">{m.label}</p>
-                      </motion.div>
+                </Reveal>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* COMPARISON — vs competitors */}
+      {/* ================================================================== */}
+      <section className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <p className="font-sans text-sm font-semibold text-amber-400 mb-3 uppercase tracking-widest">
+                Why Pocketed
+              </p>
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                The others fell short.
+                <br />
+                We built what they couldn't.
+              </h2>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+              {/* Header */}
+              <div className="grid grid-cols-3 px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]">
+                <span className="font-sans text-sm font-semibold text-stone-400">Service</span>
+                <span className="font-sans text-sm font-semibold text-stone-400">Status</span>
+                <span className="font-sans text-sm font-semibold text-stone-400">Limitation</span>
+              </div>
+
+              {competitors.map((c, i) => (
+                <div key={i} className="grid grid-cols-3 px-6 py-4 border-b border-white/[0.04] last:border-0 items-center">
+                  <span className="font-sans text-sm font-medium text-stone-300">{c.name}</span>
+                  <span className={`font-sans text-sm font-semibold ${
+                    c.status === 'Shut down' ? 'text-red-400' : c.status === 'Absorbed' ? 'text-stone-500' : 'text-stone-400'
+                  }`}>
+                    {c.status}
+                  </span>
+                  <span className="font-sans text-sm text-stone-500">{c.note}</span>
+                </div>
+              ))}
+
+              {/* Pocketed row */}
+              <div className="grid grid-cols-3 px-6 py-5 bg-amber-500/[0.05] border-t border-amber-500/20 items-center">
+                <span className="font-sans text-sm font-bold text-amber-400">Pocketed</span>
+                <span className="font-sans text-sm font-bold text-emerald-400">$3.99/mo</span>
+                <span className="font-sans text-sm font-semibold text-white">All 6 channels. 100% of your money.</span>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* TESTIMONIALS */}
+      {/* ================================================================== */}
+      <section className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                Real people. Real money back.
+              </h2>
+              <p className="mt-4 text-stone-500 font-sans text-lg">From our beta testers</p>
+            </div>
+          </Reveal>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t, i) => (
+              <Reveal key={i} delay={i * 0.1}>
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8 hover:bg-white/[0.05] transition-all duration-300 h-full flex flex-col">
+                  {/* Amount badge */}
+                  <div className="mb-6">
+                    <span className="text-2xl font-extrabold text-amber-400">{t.amount}</span>
+                    <span className="text-stone-500 text-sm ml-2">recovered</span>
+                  </div>
+
+                  <p className="font-sans text-stone-300 leading-relaxed mb-8 flex-1">
+                    &ldquo;{t.quote}&rdquo;
+                  </p>
+
+                  <div className="flex items-center gap-3 pt-6 border-t border-white/[0.06]">
+                    {/* Avatar placeholder */}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                      <span className="font-sans font-bold text-stone-950 text-sm">
+                        {t.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-sans font-semibold text-white text-sm">{t.name}</p>
+                      <p className="font-sans text-stone-500 text-xs">
+                        {t.role} — {t.location}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================== */}
+      {/* PRICING */}
+      {/* ================================================================== */}
+      <section id="pricing" className="bg-stone-900/50 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white mb-4">
+                Simple, honest pricing
+              </h2>
+              <p className="font-sans text-lg text-stone-400 max-w-2xl mx-auto">
+                No percentage of your refunds. No hidden fees. Keep 100% of everything we recover.
+              </p>
+            </div>
+          </Reveal>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: 'Free',
+                price: '$0',
+                period: '/forever',
+                desc: 'See what you\'re owed',
+                features: ['Track up to 5 items', 'See recovery opportunities', 'File claims yourself', 'Email support'],
+                cta: 'Start Free',
+                popular: false,
+              },
+              {
+                name: 'Pro',
+                price: '$3.99',
+                period: '/mo',
+                desc: 'Maximize your recovery',
+                features: [
+                  'Unlimited items',
+                  'Auto-filing for price drops',
+                  'All 6 recovery channels',
+                  'Priority alerts',
+                  '60-day money-back guarantee',
+                ],
+                cta: 'Join Waitlist',
+                popular: true,
+              },
+              {
+                name: 'Family',
+                price: '$6.99',
+                period: '/mo',
+                desc: 'Recover for everyone',
+                features: ['Up to 5 email accounts', 'Shared dashboard', 'Family warranty vault', 'Everything in Pro'],
+                cta: 'Join Waitlist',
+                popular: false,
+              },
+            ].map((plan, i) => (
+              <Reveal key={i} delay={i * 0.1}>
+                <div
+                  className={`relative rounded-2xl p-8 border transition-all duration-300 h-full flex flex-col ${
+                    plan.popular
+                      ? 'bg-amber-500/[0.06] border-amber-500/30 shadow-lg shadow-amber-500/5'
+                      : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.05]'
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="px-4 py-1 bg-amber-500 text-stone-950 text-xs font-bold rounded-full">
+                        MOST POPULAR
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="mb-8">
+                    <h3 className="font-sans text-xl font-bold text-white mb-1">{plan.name}</h3>
+                    <p className="text-stone-500 font-sans text-sm mb-5">{plan.desc}</p>
+                    <div className="flex items-baseline gap-1">
+                      <span className="font-sans text-4xl font-extrabold text-white">{plan.price}</span>
+                      <span className="text-stone-500 font-sans text-sm">{plan.period}</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href="#waitlist"
+                    className={`block w-full py-3 px-6 rounded-xl font-semibold font-sans text-sm text-center transition-all mb-8 ${
+                      plan.popular
+                        ? 'bg-amber-500 text-stone-950 hover:bg-amber-400 shadow-lg shadow-amber-500/20'
+                        : 'bg-white/[0.06] text-white hover:bg-white/[0.1] border border-white/[0.08]'
+                    }`}
+                  >
+                    {plan.cta}
+                  </a>
+
+                  <div className="space-y-3.5 flex-1">
+                    {plan.features.map((f, j) => (
+                      <div key={j} className="flex items-start gap-3">
+                        <Check size={16} className={plan.popular ? 'text-amber-400 mt-0.5' : 'text-stone-600 mt-0.5'} />
+                        <span className="text-stone-400 font-sans text-sm">{f}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
-              </Tilt>
-            </motion.div>
+              </Reveal>
+            ))}
           </div>
+        </div>
+      </section>
 
-          {/* Store logos */}
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
-            className="mt-16 pt-10 border-t border-neutral-100">
-            <p className="text-[11px] text-neutral-400 text-center mb-5 font-medium uppercase tracking-wider">Works with your favorite stores</p>
-            <div className="flex items-center justify-center gap-8 md:gap-12 flex-wrap opacity-30 hover:opacity-50 transition-opacity duration-700">
-              {['Amazon', 'Target', 'Best Buy', 'Walmart', 'Apple', 'Nike'].map(name => (
-                <span key={name} className="text-sm font-bold text-neutral-900">{name}</span>
+      {/* ================================================================== */}
+      {/* FAQ */}
+      {/* ================================================================== */}
+      <section id="faq" className="bg-stone-950 py-20 md:py-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <Reveal>
+            <div className="text-center mb-16">
+              <h2 className="font-sans text-4xl md:text-5xl font-extrabold tracking-tight text-white">
+                Questions? Answers.
+              </h2>
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.1}>
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-8">
+              {faqItems.map((item, i) => (
+                <AccordionItem key={i} question={item.question} answer={item.answer} />
               ))}
             </div>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* ══════ PROBLEM — scroll highlight ══════ */}
-      <section className="py-24 md:py-40 px-6">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-xs font-bold tracking-widest uppercase text-orange-500 mb-8">The problem</p>
-          <ScrollHighlight text="Every year, $48 billion goes unclaimed by consumers. Price drops you miss. Returns you forget. Subscriptions bleeding you dry. Warranties expiring in silence. You're losing money you don't even know about — and companies are counting on it." />
+          </Reveal>
         </div>
       </section>
 
-      {/* ══════ STATS ══════ */}
-      <section className="py-16 px-6 border-y border-neutral-100">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {[
-            { val: 48, pre: '$', suf: 'B+', label: 'Left unclaimed annually' },
-            { val: 200, suf: '+', label: 'Retailers tracked' },
-            { val: 347, pre: '$', label: 'Avg. recovered per user' },
-            { val: 3, label: 'Minutes to first alert' },
-          ].map((s, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }} transition={{ duration: 0.3, delay: i * 0.06 }} className="text-center">
-              <p className="text-3xl md:text-4xl font-extrabold text-neutral-900 mb-1">
-                {i === 3 ? '< 3 min' : <Counter value={s.val} prefix={s.pre} suffix={s.suf} />}
-              </p>
-              <p className="text-xs text-neutral-500">{s.label}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      {/* ================================================================== */}
+      {/* FINAL CTA */}
+      {/* ================================================================== */}
+      <section className="relative py-24 md:py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Gradient bg */}
+        <div className="absolute inset-0 bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-500/[0.04] rounded-full blur-3xl" />
 
-      {/* ══════ HOW IT WORKS — on-brand cards ══════ */}
-      <section id="how" className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-14">
-            <p className="text-xs font-bold tracking-widest uppercase text-orange-500 mb-3">How it works</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
-              Three steps. That&apos;s it.
+        <div className="max-w-3xl mx-auto text-center relative z-10">
+          <Reveal>
+            <h2 className="font-sans text-4xl md:text-6xl font-extrabold tracking-tight text-white mb-6">
+              Stop leaving money
+              <br />
+              on the table.
             </h2>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { num: '01', title: 'Connect your email', desc: 'Link Gmail or Outlook securely via OAuth. We only scan receipts — never personal emails.', icon: Mail },
-              { num: '02', title: "We find what you're owed", desc: 'AI scans 200+ retailers, tracks price drops, flags returns, audits subscriptions.', icon: BarChart3 },
-              { num: '03', title: 'Get your money back', desc: 'We auto-file claims or guide you through it. You keep 100% of every dollar.', icon: Zap },
-            ].map((s, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.1 }}>
-                <Tilt className={`${brand.card} ${brand.radius} p-8 h-full cursor-default group hover:shadow-lg hover:shadow-neutral-200/50 hover:border-neutral-300 transition-all duration-300`}>
-                  <div className={`${brand.iconBox} bg-neutral-100 group-hover:bg-orange-50 transition-colors mb-6`}>
-                    <s.icon size={18} strokeWidth={1.5} className="text-neutral-600 group-hover:text-orange-500 transition-colors" />
-                  </div>
-                  <span className="text-[10px] font-bold text-neutral-300 tracking-widest block mb-3">STEP {s.num}</span>
-                  <h3 className="text-lg font-extrabold text-neutral-900 mb-3">{s.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">{s.desc}</p>
-                </Tilt>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+          </Reveal>
 
-      {/* ══════ FEATURES — dark zone (ref triggers page bg change) ══════ */}
-      <div ref={featuresRef} id="features">
-        <div className="py-32 md:py-40 px-6">
-          <div className="max-w-6xl mx-auto">
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-14">
-              <p className="text-xs font-bold tracking-widest uppercase text-orange-400 mb-3">Recovery channels</p>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight max-w-xl">
-                Six ways we put money back in your pocket.
-              </h2>
-            </motion.div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {features.map((f, i) => {
-                const Icon = f.icon;
-                return (
-                  <motion.div key={i} initial={{ opacity: 0, y: 25 }} whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.4, delay: i * 0.05 }}>
-                    <Tilt className={`group ${brand.cardDark} ${brand.radius} p-6 hover:bg-white/[0.08] hover:border-orange-500/15 transition-all duration-300 cursor-default h-full`}>
-                      <div className="flex items-start justify-between mb-6">
-                        <div className={`${brand.iconBox} bg-orange-500/10 group-hover:bg-orange-500/15 transition-colors`}>
-                          <Icon size={18} strokeWidth={1.5} className="text-orange-400" />
-                        </div>
-                        <span className="text-[10px] font-bold text-neutral-600 bg-white/5 px-2 py-1 rounded-2xl border border-white/10">{f.stat}</span>
-                      </div>
-                      <h3 className="text-sm font-bold text-white mb-1.5 group-hover:text-orange-300 transition-colors">{f.title}</h3>
-                      <p className="text-[13px] text-neutral-500 leading-relaxed">{f.desc}</p>
-                    </Tilt>
-                  </motion.div>
-                );
-              })}
+          <Reveal delay={0.1}>
+            <p className="font-sans text-lg text-stone-400 mb-10 max-w-xl mx-auto">
+              The average user finds $347 in their first scan. Join the waitlist and be the first to know when we launch.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.15}>
+            <div className="flex justify-center">
+              <WaitlistForm variant="dark" />
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ══════ TESTIMONIALS ══════ */}
-      <section className="py-24 px-6 overflow-hidden">
-        <div className="max-w-6xl mx-auto mb-12">
-          <motion.h2 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-            className="text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight text-center">
-            Real people. <span className="text-neutral-400">Real money recovered.</span>
-          </motion.h2>
-        </div>
-        <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
-          <motion.div animate={{ x: [0, -1400] }} transition={{ duration: 40, repeat: Infinity, ease: 'linear' }} className="flex gap-4 w-max">
-            {[...testimonials, ...testimonials, ...testimonials].map((t, i) => (
-              <motion.div key={i} whileHover={{ y: -3 }} transition={{ type: 'spring', stiffness: 400 }}
-                className={`w-[300px] shrink-0 ${brand.card} ${brand.radius} p-5 cursor-default hover:shadow-md hover:border-neutral-300 transition-all`}>
-                <div className="flex gap-0.5 mb-3">
-                  {[...Array(5)].map((_, j) => <Star key={j} size={11} strokeWidth={1.5} className="fill-orange-400 text-orange-400" />)}
-                </div>
-                <p className="text-sm text-neutral-700 mb-4 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
-                  <div>
-                    <p className="text-sm font-bold text-neutral-900">{t.name}</p>
-                    <p className="text-[11px] text-neutral-400">{t.loc}</p>
-                  </div>
-                  <span className="text-lg font-extrabold text-orange-500">{t.amount}</span>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+          </Reveal>
         </div>
       </section>
 
-      {/* ══════ PRICING ══════ */}
-      <section id="pricing" className="py-24 md:py-32 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center mb-12">
-            <p className="text-xs font-bold tracking-widest uppercase text-orange-500 mb-3">Pricing</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight mb-3">Simple, honest pricing</h2>
-            <p className="text-neutral-500 text-sm">No percentage cuts. You keep everything.</p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-            {[
-              { name: 'Free', price: '$0', desc: 'Track your first wins', features: ['Track up to 5 items', "See what you're owed", 'File claims yourself', 'Email support'], pop: false },
-              { name: 'Pro', price: '$3.99', desc: 'Maximize recovery', features: ['Unlimited items', 'Auto-filing for price drops', 'All 6 recovery channels', 'Priority alerts', '60-day guarantee'], pop: true },
-              { name: 'Family', price: '$6.99', desc: 'The whole family', features: ['Up to 5 accounts', 'Shared dashboard', 'Warranty vault', 'Everything in Pro'], pop: false },
-            ].map((plan, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08 }}
-                className={`relative ${brand.radius} p-7 ${
-                  plan.pop ? 'bg-neutral-900 text-white shadow-xl ring-2 ring-orange-500/30' : `${brand.card}`
-                }`}>
-                {plan.pop && <div className="absolute -top-3 left-1/2 -translate-x-1/2"><span className="px-3 py-1 bg-orange-500 text-white text-[10px] font-bold rounded-2xl">POPULAR</span></div>}
-                <h3 className="text-lg font-extrabold mb-1">{plan.name}</h3>
-                <p className={`text-xs mb-4 ${plan.pop ? 'text-neutral-400' : 'text-neutral-500'}`}>{plan.desc}</p>
-                <p className="text-3xl font-extrabold mb-5">{plan.price}<span className={`text-sm font-medium ${plan.pop ? 'text-neutral-500' : 'text-neutral-400'}`}>/mo</span></p>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  className={`w-full py-2.5 ${brand.radius} font-semibold text-sm transition-all mb-5 ${
-                    plan.pop ? 'bg-orange-500 text-white hover:bg-orange-400' : 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
-                  }`}>{plan.pop ? 'Join Waitlist' : 'Start Free'}</motion.button>
-                <div className="space-y-2.5">
-                  {plan.features.map((f, j) => (
-                    <div key={j} className="flex items-start gap-2">
-                      <Check size={14} strokeWidth={2} className={`mt-0.5 ${plan.pop ? 'text-orange-400' : 'text-orange-500'}`} />
-                      <span className={`text-[13px] ${plan.pop ? 'text-neutral-300' : 'text-neutral-600'}`}>{f}</span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════ FAQ ══════ */}
-      <section id="faq" className="py-24 md:py-32 px-6">
-        <div className="max-w-2xl mx-auto">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-10">
-            <p className="text-xs font-bold tracking-widest uppercase text-orange-500 mb-3">FAQ</p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-neutral-900 tracking-tight">
-              Questions? <span className="text-neutral-400">Answers.</span>
-            </h2>
-          </motion.div>
-          {faqItems.map((item, i) => <Accordion key={i} q={item.q} a={item.a} />)}
-        </div>
-      </section>
-
-      {/* ══════ CTA — scroll-driven dark zone ══════ */}
-      <div id="cta" className="bg-neutral-950 text-white">
-        <div className="relative py-24 md:py-32 px-6 overflow-hidden">
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[50vw] h-[30vh] bg-orange-500/[0.08] rounded-full blur-[100px]" />
-          </div>
-          <div className="max-w-xl mx-auto text-center relative z-10">
-            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-4">
-              Stop leaving money on the table.
-            </motion.h2>
-            <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-              className="text-neutral-500 mb-8">Join 4,200+ people getting back what&apos;s theirs.</motion.p>
-            <motion.form initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
-              onSubmit={e => e.preventDefault()} className="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
-              <input type="email" placeholder="you@email.com" required
-                className={`flex-1 px-4 py-3 ${brand.radius} bg-white/10 border border-white/10 text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 transition-all`} />
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit"
-                className={`px-6 py-3 bg-orange-500 text-white ${brand.radius} font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap`}>
-                Get Access
-              </motion.button>
-            </motion.form>
-            <p className="mt-4 text-xs text-neutral-700">Free to join. No credit card required.</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ══════ FOOTER ══════ */}
-      <footer className="bg-neutral-950 border-t border-white/5 py-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+      {/* ================================================================== */}
+      {/* FOOTER */}
+      {/* ================================================================== */}
+      <footer className="border-t border-white/[0.05] bg-stone-950 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+            {/* Brand */}
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-2xl bg-orange-500 flex items-center justify-center"><span className="text-white text-[10px] font-extrabold">P</span></div>
-                <span className="font-extrabold text-white text-sm">Pocketed</span>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+                  <span className="font-sans font-bold text-stone-950 text-xs">P</span>
+                </div>
+                <span className="font-sans font-bold text-white">Pocketed</span>
               </div>
-              <p className="text-xs text-neutral-600">Get back what&apos;s rightfully yours.</p>
+              <p className="text-stone-500 font-sans text-sm leading-relaxed">
+                Get back what's rightfully yours. Built by Zamn Studios.
+              </p>
             </div>
+
+            {/* Links */}
             {[
-              { t: 'Product', ls: [['How it Works', '#how'], ['Pricing', '#pricing'], ['FAQ', '#faq']] },
-              { t: 'Company', ls: [['About', '#'], ['Blog', '#'], ['Contact', '#']] },
-              { t: 'Legal', ls: [['Privacy', '#'], ['Terms', '#']] },
-            ].map(col => (
-              <div key={col.t}>
-                <p className="text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-3">{col.t}</p>
-                <ul className="space-y-2">
-                  {col.ls.map(([l, h]) => <li key={l}><a href={h} className="text-sm text-neutral-500 hover:text-orange-400 transition-colors">{l}</a></li>)}
+              {
+                heading: 'Product',
+                links: [
+                  { label: 'How it Works', href: '#how' },
+                  { label: 'Features', href: '#features' },
+                  { label: 'Pricing', href: '#pricing' },
+                  { label: 'FAQ', href: '#faq' },
+                ],
+              },
+              {
+                heading: 'Company',
+                links: [
+                  { label: 'About', href: '#' },
+                  { label: 'Blog', href: '#' },
+                  { label: 'Contact', href: '#' },
+                ],
+              },
+              {
+                heading: 'Legal',
+                links: [
+                  { label: 'Privacy', href: '#' },
+                  { label: 'Terms', href: '#' },
+                ],
+              },
+            ].map((col) => (
+              <div key={col.heading}>
+                <p className="font-semibold text-white mb-4 font-sans text-sm">{col.heading}</p>
+                <ul className="space-y-2.5">
+                  {col.links.map((link) => (
+                    <li key={link.label}>
+                      <a href={link.href} className="text-stone-500 hover:text-white transition-colors font-sans text-sm">
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ))}
           </div>
-          <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-[11px] text-neutral-700">Built by <a href="#" className="text-neutral-500 hover:text-orange-400 transition-colors">Zamn Studios</a></p>
-            <p className="text-[11px] text-neutral-700">&copy; 2026 Pocketed. All rights reserved.</p>
+
+          <div className="border-t border-white/[0.05] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-stone-600 font-sans text-sm">
+              Built by{' '}
+              <a href="#" className="text-stone-500 hover:text-white transition-colors">
+                Zamn Studios
+              </a>
+            </p>
+            <p className="text-stone-600 font-sans text-sm">
+              &copy; 2026 Pocketed. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
