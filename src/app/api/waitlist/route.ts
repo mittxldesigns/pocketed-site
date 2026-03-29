@@ -53,10 +53,10 @@ export async function POST(request: NextRequest) {
       .from('waitlist')
       .insert([{ email, source: typeof reqSource === 'string' ? reqSource : 'landing_page' }]);
 
-    // If it's a unique constraint violation (duplicate email), still return success
+    // Duplicate email — let the user know they're already signed up
     if (error && error.code === '23505') {
       return NextResponse.json(
-        { success: true, message: "You're on the list!" },
+        { success: true, duplicate: true, message: "You're already on the waitlist!" },
         { status: 200 }
       );
     }
@@ -64,13 +64,13 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Supabase error:', error);
       return NextResponse.json(
-        { success: false, message: 'Something went wrong' },
+        { success: false, message: 'Something went wrong. Please try again.' },
         { status: 500 }
       );
     }
 
     return NextResponse.json(
-      { success: true, message: "You're on the list!" },
+      { success: true, duplicate: false, message: "You're on the list!" },
       { status: 200 }
     );
   } catch (error) {
