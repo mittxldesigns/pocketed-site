@@ -726,16 +726,19 @@ export default function V2() {
               style={{
                 fontSize: 'clamp(1.2rem, 3vw, 48px)',
                 fontWeight: 300,
-                letterSpacing: '-0.06em',
+                letterSpacing: '-0.04em',
               }}>
               They&apos;re hoping you never find out.
             </motion.p>
 
             <motion.a href="#cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-              className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/30 text-white hover:bg-white/10 transition-colors whitespace-nowrap shrink-0"
-              style={{ fontSize: 'clamp(0.8rem, 1.1vw, 1.125rem)', fontWeight: 400, letterSpacing: '-0.06em' }}>
-              Get my money back with <span className="font-semibold">Pocketed</span>
-              <ArrowUpRight size={14} strokeWidth={2} />
+              className="group hidden sm:inline-flex items-center gap-2.5 px-6 py-3 rounded-full border border-white/25 text-white hover:border-white/50 hover:bg-white/[0.07] transition-all duration-300 whitespace-nowrap shrink-0 overflow-hidden"
+              style={{ fontSize: 'clamp(0.8rem, 1.1vw, 1.125rem)', fontWeight: 400, letterSpacing: '-0.04em' }}>
+              <span className="transition-transform duration-300 group-hover:-translate-x-0.5">Get my money back with</span>
+              <span className="font-semibold transition-transform duration-300 group-hover:-translate-x-0.5">Pocketed</span>
+              <span className="inline-flex transition-all duration-300 group-hover:translate-x-1 group-hover:-translate-y-0.5">
+                <ArrowUpRight size={14} strokeWidth={2} />
+              </span>
             </motion.a>
           </div>
         </div>
