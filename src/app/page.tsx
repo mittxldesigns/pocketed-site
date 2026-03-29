@@ -169,20 +169,33 @@ function usePageBg(darkRefs: React.RefObject<HTMLDivElement | null>[]) {
 /* ═══════ NAV ═══════ */
 function Nav({ onLogoClick, isDark }: { onLogoClick: () => void; isDark: boolean }) {
   const [scrolled, setScrolled] = useState(false);
-  useEffect(() => { const h = () => setScrolled(window.scrollY > 40); window.addEventListener('scroll', h); return () => window.removeEventListener('scroll', h); }, []);
+  const [pastHero, setPastHero] = useState(false);
+  useEffect(() => {
+    const h = () => {
+      setScrolled(window.scrollY > 40);
+      setPastHero(window.scrollY > window.innerHeight * 0.85);
+    };
+    window.addEventListener('scroll', h);
+    return () => window.removeEventListener('scroll', h);
+  }, []);
+  // On hero (not past it), always show white text / transparent bg
+  const onHero = !pastHero;
+  const showWhite = onHero || isDark;
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-      scrolled ? isDark ? 'bg-neutral-950/80 backdrop-blur-2xl' : 'bg-white/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.04)]' : ''
+      !pastHero
+        ? 'opacity-0 pointer-events-none'
+        : isDark ? 'bg-neutral-950/80 backdrop-blur-2xl opacity-100' : 'bg-white/80 backdrop-blur-2xl shadow-[0_1px_0_0_rgba(0,0,0,0.04)] opacity-100'
     }`}>
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-2xl bg-orange-500 flex items-center justify-center">
             <span className="font-extrabold text-sm text-white">P</span>
           </div>
-          <span className={`font-extrabold text-[15px] transition-colors duration-500 ${isDark ? 'text-white' : 'text-neutral-900'}`}>Pocketed</span>
+          <span className={`font-extrabold text-[15px] transition-colors duration-500 ${showWhite ? 'text-white' : 'text-neutral-900'}`}>Pocketed</span>
         </a>
         <Magnetic href="#cta" className={`hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[13px] font-semibold transition-colors duration-500 ${
-          isDark ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
+          showWhite ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
         }`}>
           Join Waitlist <ArrowUpRight size={12} strokeWidth={2} />
         </Magnetic>
@@ -642,41 +655,34 @@ export default function V2() {
       <ScrollBar />
       <Nav onLogoClick={() => {}} isDark={isDark} />
 
-      {/* ═══════ 1. HERO — GIANT TEXT + 3D COIN ═══════ */}
-      <section className="min-h-screen flex flex-col justify-center px-6 pt-20">
-        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-12 items-center">
-          <div>
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-              className="text-sm font-bold tracking-[0.2em] uppercase text-orange-500 mb-6">
-              Automatic money recovery
-            </motion.p>
+      {/* ═══════ 1. HERO — CINEMATIC VIDEO ═══════ */}
+      <section className="relative h-screen p-4 md:p-6" style={{ backgroundColor: '#f0f0f0' }}>
+        {/* Rounded video card */}
+        <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
+          {/* Video background */}
+          <video
+            autoPlay muted loop playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/walter-money.mp4" type="video/mp4" />
+          </video>
 
-            <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.15 }}
-              className="text-[clamp(3rem,8vw,7rem)] font-extrabold leading-[0.95] tracking-[-0.04em] mb-8">
-              You&apos;re owed
-              <br />more than
-              <br />you <span className="gradient-text">think.</span>
-            </motion.h1>
+          {/* Dark gradient overlays — heavier at top and bottom for text */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60" />
 
-            <motion.p initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-              className="text-neutral-500 text-lg max-w-lg mb-10 leading-relaxed">
-              Price drops after you buy. Returns you forget to make. Subscriptions bleeding you dry. Pocketed finds it all and gets your money back — automatically.
-            </motion.p>
+          {/* Top text — "Companies owe you." */}
+          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}
+            className="absolute top-6 md:top-10 left-6 md:left-10 right-6 md:right-10 text-white leading-[0.92] tracking-[-0.02em]"
+            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(3.5rem, 11vw, 10rem)', fontWeight: 600 }}>
+            Companies <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 600 }}>owe</em> you.
+          </motion.h1>
 
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-              className="flex items-center gap-4">
-              <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-neutral-900 text-white px-7 py-3.5 rounded-2xl font-semibold text-sm hover:bg-neutral-800 transition-colors">
-                Check what you&apos;re owed <ArrowRight size={14} strokeWidth={2} />
-              </Magnetic>
-              <span className="text-sm text-neutral-400">4,200+ on the waitlist</span>
-            </motion.div>
-          </div>
-
-          {/* Floating product UI */}
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.5 }}
-            className="hidden lg:block w-[380px] h-[400px] relative -mr-4">
-            <HeroVisual />
-          </motion.div>
+          {/* Bottom text — "They're hoping you never find out." */}
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}
+            className="absolute bottom-8 md:bottom-12 left-8 md:left-12 right-8 md:right-12 text-white/70"
+            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 4rem)', fontWeight: 300 }}>
+            They&apos;re hoping you never find out.
+          </motion.p>
         </div>
       </section>
 
