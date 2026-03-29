@@ -735,6 +735,16 @@ export default function V2() {
         </div>
       </section>
 
+      {/* ═══════ VISUAL DIVIDER — atmospheric image ═══════ */}
+      <div className="relative h-48 md:h-72 overflow-hidden">
+        <img
+          src="https://images.unsplash.com/photo-1765637566614-bbe1f5aed815?w=1920&q=80&auto=format&fit=crop"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-transparent to-white" />
+      </div>
+
       {/* ═══════ CTA — after problem ═══════ */}
       <section className="px-6 pb-24 md:pb-32">
         <div className="max-w-7xl mx-auto">
@@ -849,8 +859,13 @@ export default function V2() {
       </section>
 
       {/* ═══════ 4. DARK ZONE — FEATURES BENTO ═══════ */}
-      <div ref={featuresRef} id="features">
-        <div className="px-6 py-32 md:py-40">
+      <div ref={featuresRef} id="features" className="relative">
+        <img
+          src="https://images.unsplash.com/photo-1611661490749-3940b8f3f9e4?w=1920&q=60&auto=format&fit=crop"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover opacity-[0.07] mix-blend-screen pointer-events-none"
+        />
+        <div className="px-6 py-32 md:py-40 relative z-10">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Title card — spans 2 cols */}
@@ -952,6 +967,16 @@ export default function V2() {
           />
         </div>
       </section>
+
+      {/* ═══════ VISUAL DIVIDER — editorial accent ═══════ */}
+      <div className="relative h-40 md:h-56 overflow-hidden">
+        <img
+          src="https://images.unsplash.com/photo-1718115690443-cd8b7f6c112b?w=1920&q=80&auto=format&fit=crop"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white via-white/30 to-white" />
+      </div>
 
       {/* ═══════ COMPETITOR COMPARISON ═══════ */}
       <section className="px-6 py-24 md:py-32">
