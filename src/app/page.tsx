@@ -751,7 +751,7 @@ export default function V2() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
             <h2 className="text-[clamp(2.5rem,6vw,5rem)] font-extrabold tracking-[-0.04em] leading-[0.92] mb-5">
-              This is happening<br />to you <span className="italic text-neutral-300 hand-underline">right now.</span>
+              This is happening<br />to you <span className="text-neutral-300 hand-underline">right now.</span>
             </h2>
             <p className="text-neutral-500 max-w-xl text-lg leading-relaxed">
               You&apos;re not bad with money. The system is designed to make you forget. And every month, it works.
