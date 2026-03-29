@@ -751,7 +751,7 @@ export default function V2() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
             <h2 className="text-[clamp(2.5rem,6vw,5rem)] font-extrabold tracking-[-0.04em] leading-[0.92] mb-5">
-              This is happening<br />to you <span className="font-display italic text-neutral-300 hand-underline">right now.</span>
+              This is happening<br />to you <span className="italic text-neutral-300 hand-underline">right now.</span>
             </h2>
             <p className="text-neutral-500 max-w-xl text-lg leading-relaxed">
               You&apos;re not bad with money. The system is designed to make you forget. And every month, it works.
@@ -832,7 +832,7 @@ export default function V2() {
       {/* ═══════ BRAND VOICE LINE ═══════ */}
       <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
         className="text-center px-6 pb-20">
-        <span className="font-display italic text-neutral-400 text-lg md:text-xl">
+        <span className="italic text-neutral-400 text-lg md:text-xl">
           Companies aren&apos;t losing sleep over your money. We are.
         </span>
       </motion.p>
@@ -973,12 +973,12 @@ export default function V2() {
               className="md:row-span-2">
               <BentoCard className="h-full flex flex-col justify-between min-h-[360px] relative overflow-hidden">
                 <motion.span initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 0.06, y: 0 }} viewport={{ once: true }}
-                  className="absolute -top-8 -left-3 font-display text-[12rem] leading-none text-orange-500 select-none pointer-events-none">&ldquo;</motion.span>
+                  className="absolute -top-8 -left-3 text-[12rem] leading-none text-orange-500 select-none pointer-events-none">&ldquo;</motion.span>
                 <div className="relative z-10">
                   <div className="flex gap-0.5 mb-6">
                     {[...Array(5)].map((_, j) => <Star key={j} size={14} strokeWidth={1.5} className="fill-orange-400 text-orange-400" />)}
                   </div>
-                  <p className="font-display text-[clamp(1.3rem,2.5vw,1.8rem)] leading-[1.35] tracking-tight mb-6">
+                  <p className="text-[clamp(1.3rem,2.5vw,1.8rem)] leading-[1.35] tracking-tight mb-6">
                     &ldquo;{testimonials[0].quote}&rdquo;
                   </p>
                 </div>
@@ -1029,7 +1029,7 @@ export default function V2() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-10">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">Why Pocketed</p>
             <h2 className="text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.03em] leading-[0.95]">
-              The others <span className="font-display italic text-neutral-400">fell short.</span>
+              The others <span className="italic text-neutral-400">fell short.</span>
             </h2>
           </motion.div>
 
