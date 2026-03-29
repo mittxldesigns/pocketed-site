@@ -484,14 +484,12 @@ function FillWidthHeadline() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="leading-[1.1] whitespace-nowrap"
+        className="leading-[1.1] whitespace-nowrap text-white/90"
         style={{ fontSize: `${fontSize}px`, fontWeight: 500, letterSpacing: '-0.08em' }}
       >
-        <span className="text-outline inline-block">Companies</span>
-        {' '}
-        <span className="inline-block text-white" style={{ fontStyle: 'italic', fontWeight: 700, WebkitTextStroke: '0' }}>owe</span>
-        {' '}
-        <span className="text-outline inline-block">you.</span>
+        Companies{' '}
+        <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 700, color: 'white' }}>owe</em>
+        {' '}you.
       </motion.h1>
     </div>
   );
@@ -717,7 +715,9 @@ export default function V2() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/40" />
 
         {/* Bordered subframe — 40px inset, 50px radius, holds all text */}
-        <div className="absolute inset-5 md:inset-10 rounded-[30px] md:rounded-[50px] border border-white/[0.12] flex flex-col justify-between p-5 md:p-8 z-10">
+        {/* Subframe — max 1800px, centered, inset from edges */}
+        <div className="absolute inset-5 md:inset-10 z-10 flex justify-center">
+        <div className="w-full max-w-[1800px] h-full rounded-[30px] md:rounded-[50px] border border-white/[0.12] flex flex-col justify-between p-5 md:p-8">
           {/* Top — fill-width headline */}
           <FillWidthHeadline />
 
@@ -740,6 +740,7 @@ export default function V2() {
               <ArrowUpRight size={14} strokeWidth={2} />
             </motion.a>
           </div>
+        </div>
         </div>
       </section>
 
