@@ -672,14 +672,14 @@ export default function V2() {
 
           {/* Top text — "Companies owe you." */}
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}
-            className="absolute top-6 md:top-10 left-6 md:left-10 right-6 md:right-10 text-white leading-[0.92] tracking-[-0.02em]"
-            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(3.5rem, 11vw, 10rem)', fontWeight: 600 }}>
+            className="absolute top-6 md:top-10 left-6 md:left-10 right-6 md:right-10 text-white leading-[0.92] tracking-[0.01em] whitespace-nowrap"
+            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(2.5rem, 8.8vw, 10rem)', fontWeight: 600 }}>
             Companies <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 600 }}>owe</em> you.
           </motion.h1>
 
           {/* Bottom text — "They're hoping you never find out." */}
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}
-            className="absolute bottom-8 md:bottom-12 left-8 md:left-12 right-8 md:right-12 text-white/70"
+            className="absolute bottom-6 md:bottom-10 left-6 md:left-10 right-6 md:right-10 text-white/70 tracking-[0.01em]"
             style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 4rem)', fontWeight: 300 }}>
             They&apos;re hoping you never find out.
           </motion.p>
