@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
+import { Manrope, Plus_Jakarta_Sans, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -12,6 +12,12 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const dmSerif = DM_Serif_Display({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -32,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${jakarta.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${jakarta.variable} ${dmSerif.variable}`}>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );

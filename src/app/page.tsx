@@ -51,11 +51,17 @@ function Counter({ value, prefix = '', suffix = '' }: { value: number; prefix?: 
   useEffect(() => {
     if (!inView) return;
     let s: number | null = null, raf: number;
+    const dur = 1400;
     const step = (t: number) => {
       if (s === null) s = t;
-      const p = Math.min((t - s) / 1800, 1);
-      setN(Math.round((1 - Math.pow(1 - p, 4)) * value));
+      const p = Math.min((t - s) / dur, 1);
+      // Spring-like overshoot: goes to ~108% then settles
+      const spring = p < 0.7
+        ? (p / 0.7) * 1.08
+        : 1.08 - 0.08 * ((p - 0.7) / 0.3);
+      setN(Math.round(Math.min(spring, 1.08) * value));
       if (p < 1) raf = requestAnimationFrame(step);
+      else setN(value); // ensure exact final value
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
@@ -105,7 +111,9 @@ function ScrollHighlight({ text, className = '' }: { text: string; className?: s
   );
 }
 function ScrollWord({ word, progress, start, end }: { word: string; progress: ReturnType<typeof useScroll>['scrollYProgress']; start: number; end: number }) {
-  return <motion.span style={{ opacity: useTransform(progress, [start, end], [0.1, 1]) }} className="inline-block mr-[0.3em]">{word}</motion.span>;
+  const opacity = useTransform(progress, [start, end], [0.12, 1]);
+  const fontWeight = useTransform(progress, [start, end], [300, 700]);
+  return <motion.span style={{ opacity, fontWeight }} className="inline-block mr-[0.3em]">{word}</motion.span>;
 }
 
 function Accordion({ q, a }: { q: string; a: string }) {
@@ -214,7 +222,7 @@ async function submitWaitlist(email: string, source = 'v2_landing'): Promise<{ s
 }
 
 /* ═══════ INLINE CTA BANNER ═══════ */
-function InlineCta({ headline, sub, dark = false }: { headline: string; sub: string; dark?: boolean }) {
+function InlineCta({ headline, sub, dark = false, btnText = 'Get Early Access' }: { headline: string; sub: string; dark?: boolean; btnText?: string }) {
   const [email, setEmail] = useState('');
   const [done, setDone] = useState(false);
   const [isDuplicate, setIsDuplicate] = useState(false);
@@ -254,7 +262,7 @@ function InlineCta({ headline, sub, dark = false }: { headline: string; sub: str
               <motion.button whileHover={!loading ? { scale: 1.03 } : {}} whileTap={!loading ? { scale: 0.97 } : {}} type="submit"
                 disabled={loading}
                 className={`px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap flex items-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}>
-                {loading ? <><Loader2 size={14} className="animate-spin" /> Joining...</> : 'Get Early Access'}
+                {loading ? <><Loader2 size={14} className="animate-spin" /> Joining...</> : btnText}
               </motion.button>
             </form>
           </motion.div>
@@ -317,7 +325,7 @@ function StickyBar() {
                   className="flex-1 sm:w-56 px-3 py-2 rounded-xl bg-white/10 border border-white/10 text-white placeholder-neutral-600 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
                 <motion.button whileTap={{ scale: 0.97 }} type="submit"
                   className="px-5 py-2 bg-orange-500 text-white rounded-xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
-                  Get Access
+                  Claim my spot
                 </motion.button>
               </form>
             )}
@@ -328,6 +336,71 @@ function StickyBar() {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/* ═══════ REFUND CALCULATOR ═══════ */
+function RefundCalculator() {
+  const [spend, setSpend] = useState(3000);
+  const [show, setShow] = useState(false);
+  const annual = Math.round(spend * 0.03 * 12);
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  useEffect(() => { if (inView) setTimeout(() => setShow(true), 300); }, [inView]);
+  return (
+    <motion.div ref={ref} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+      className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 md:p-12">
+      <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">Your money</p>
+      <h3 className="text-[clamp(1.5rem,3vw,2.5rem)] font-extrabold tracking-tight mb-2">
+        How much are you leaving on the table?
+      </h3>
+      <p className="text-sm text-neutral-500 mb-8">Drag the slider or type your average monthly spending.</p>
+      <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+        <div className="flex-1 w-full">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="text-sm text-neutral-400 shrink-0">Monthly spend</span>
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+              <input type="number" value={spend} onChange={e => setSpend(Math.max(0, Number(e.target.value)))}
+                className="w-full pl-7 pr-4 py-2.5 rounded-xl border border-neutral-200 bg-white text-neutral-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
+            </div>
+          </div>
+          <input type="range" min={500} max={15000} step={100} value={spend} onChange={e => setSpend(Number(e.target.value))}
+            className="w-full h-1.5 bg-neutral-200 rounded-full appearance-none cursor-pointer accent-orange-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg" />
+          <div className="flex justify-between mt-2 text-xs text-neutral-400">
+            <span>$500/mo</span><span>$15,000/mo</span>
+          </div>
+        </div>
+        <div className="text-center md:text-right shrink-0 min-w-[180px]">
+          <p className="text-xs text-neutral-400 uppercase tracking-wider mb-1">Estimated annual recovery</p>
+          <motion.p
+            key={annual}
+            initial={{ scale: 1.15, opacity: 0.7 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+            className="text-[clamp(2.5rem,5vw,4rem)] font-extrabold text-green-600 tracking-tight leading-none">
+            ${annual.toLocaleString()}
+          </motion.p>
+          <p className="text-xs text-neutral-400 mt-1">per year, back in your pocket</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════ COMPETITOR CARD ═══════ */
+function CompetitorRow({ name, status, note, dead, delay }: { name: string; status: string; note: string; dead: boolean; delay: number }) {
+  return (
+    <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay }}
+      className="flex items-center gap-4 p-5 rounded-xl border border-neutral-100 bg-white group hover:border-neutral-200 transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className={`text-sm font-bold ${dead ? 'line-through text-neutral-300' : 'text-neutral-700'}`}>{name}</p>
+        <p className="text-xs text-neutral-400 mt-0.5 truncate">{note}</p>
+      </div>
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-full shrink-0 ${
+        dead ? 'bg-red-50 text-red-500' : 'bg-neutral-100 text-neutral-500'
+      }`}>{status}</span>
+    </motion.div>
   );
 }
 
@@ -343,7 +416,7 @@ function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
       transition={{ duration: 0.5, delay }}
       className="group"
     >
-      <div className="border border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-100 transition-all duration-300 h-full">
+      <div className="receipt-card border border-neutral-200 rounded-2xl p-6 md:p-8 hover:border-neutral-300 hover:shadow-lg hover:shadow-neutral-100 transition-all duration-300 h-full">
         <div className="flex items-start justify-between mb-5">
           <div className="w-10 h-10 rounded-2xl bg-red-50 group-hover:bg-red-100 transition-colors flex items-center justify-center">
             <Icon size={18} strokeWidth={1.5} className="text-red-500" />
@@ -520,7 +593,7 @@ function CtaForm() {
                 }`}>
                 {state === 'loading' ? (
                   <><Loader2 size={14} strokeWidth={2} className="animate-spin" /> Joining...</>
-                ) : 'Get Access'}
+                ) : 'Get my money back'}
               </motion.button>
             </form>
             <p className="mt-4 text-[11px] text-neutral-700">Free. No credit card.</p>
@@ -582,7 +655,7 @@ export default function V2() {
               className="text-[clamp(3rem,8vw,7rem)] font-extrabold leading-[0.95] tracking-[-0.04em] mb-8">
               You&apos;re owed
               <br />more than
-              <br />you <span className="text-orange-500">think.</span>
+              <br />you <span className="gradient-text">think.</span>
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
@@ -593,7 +666,7 @@ export default function V2() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
               className="flex items-center gap-4">
               <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-neutral-900 text-white px-7 py-3.5 rounded-2xl font-semibold text-sm hover:bg-neutral-800 transition-colors">
-                Get Early Access <ArrowRight size={14} strokeWidth={2} />
+                Check what you&apos;re owed <ArrowRight size={14} strokeWidth={2} />
               </Magnetic>
               <span className="text-sm text-neutral-400">4,200+ on the waitlist</span>
             </motion.div>
@@ -613,10 +686,10 @@ export default function V2() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
             <h2 className="text-[clamp(2.5rem,6vw,5rem)] font-extrabold tracking-[-0.04em] leading-[0.92] mb-5">
-              This is happening<br />to you <span className="text-neutral-300">right now.</span>
+              This is happening<br />to you <span className="font-display italic text-neutral-300 hand-underline">right now.</span>
             </h2>
             <p className="text-neutral-500 max-w-xl text-lg leading-relaxed">
-              Every month, money slips through the cracks. Not because you&apos;re careless — because the system is designed to make you forget.
+              You&apos;re not bad with money. The system is designed to make you forget. And every month, it works.
             </p>
           </motion.div>
 
@@ -669,7 +742,15 @@ export default function V2() {
             headline="Stop losing money you didn't know you had."
             sub="Get early access to Pocketed. We'll scan your first 30 days of purchases for free."
             dark
+            btnText="See my refunds"
           />
+        </div>
+      </section>
+
+      {/* ═══════ REFUND CALCULATOR ═══════ */}
+      <section className="px-6 pb-24 md:pb-32">
+        <div className="max-w-7xl mx-auto">
+          <RefundCalculator />
         </div>
       </section>
 
@@ -682,6 +763,14 @@ export default function V2() {
           />
         </div>
       </section>
+
+      {/* ═══════ BRAND VOICE LINE ═══════ */}
+      <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+        className="text-center px-6 pb-20">
+        <span className="font-display italic text-neutral-400 text-lg md:text-xl">
+          Companies aren&apos;t losing sleep over your money. We are.
+        </span>
+      </motion.p>
 
       {/* ═══════ 2c. STATS ═══════ */}
       <section className="px-6 py-20">
@@ -753,7 +842,7 @@ export default function V2() {
               <p className="text-sm text-neutral-500">Connect your inbox. We do the rest. No credit card, no commitment.</p>
             </div>
             <Magnetic href="#cta" className="inline-flex items-center gap-2 bg-orange-500 text-white px-8 py-4 rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap shrink-0 shadow-lg shadow-orange-500/20">
-              Get Early Access <ArrowRight size={14} strokeWidth={2} />
+              Start recovering <ArrowRight size={14} strokeWidth={2} />
             </Magnetic>
           </motion.div>
         </div>
@@ -812,12 +901,14 @@ export default function V2() {
             {/* Big quote card */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               className="md:row-span-2">
-              <BentoCard className="h-full flex flex-col justify-between min-h-[360px]">
-                <div>
+              <BentoCard className="h-full flex flex-col justify-between min-h-[360px] relative overflow-hidden">
+                <motion.span initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 0.06, y: 0 }} viewport={{ once: true }}
+                  className="absolute -top-8 -left-3 font-display text-[12rem] leading-none text-orange-500 select-none pointer-events-none">&ldquo;</motion.span>
+                <div className="relative z-10">
                   <div className="flex gap-0.5 mb-6">
                     {[...Array(5)].map((_, j) => <Star key={j} size={14} strokeWidth={1.5} className="fill-orange-400 text-orange-400" />)}
                   </div>
-                  <p className="text-[clamp(1.3rem,2.5vw,1.8rem)] font-semibold leading-[1.35] tracking-tight mb-6">
+                  <p className="font-display text-[clamp(1.3rem,2.5vw,1.8rem)] leading-[1.35] tracking-tight mb-6">
                     &ldquo;{testimonials[0].quote}&rdquo;
                   </p>
                 </div>
@@ -857,7 +948,37 @@ export default function V2() {
           <InlineCta
             headline="Join Jake, Priya, Marcus, and 4,200+ others."
             sub="Average user recovers $347 in their first month. What are you leaving on the table?"
+            btnText="Claim my spot"
           />
+        </div>
+      </section>
+
+      {/* ═══════ COMPETITOR COMPARISON ═══════ */}
+      <section className="px-6 py-24 md:py-32">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-10">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">Why Pocketed</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.03em] leading-[0.95]">
+              The others <span className="font-display italic text-neutral-400">fell short.</span>
+            </h2>
+          </motion.div>
+
+          <div className="space-y-3 mb-6">
+            <CompetitorRow name="Earny" status="Shut down" note="Business model collapsed when retailers killed price protection" dead={true} delay={0} />
+            <CompetitorRow name="Paribus" status="Absorbed" note="Now Capital One Shopping — restricted, not independent" dead={false} delay={0.06} />
+            <CompetitorRow name="Rocket Money" status="$6-12/mo" note="Subscription tracking only. Doesn't file claims for you." dead={false} delay={0.12} />
+            <CompetitorRow name="Settlemate" status="$11.99/mo" note="Class-action settlements only. No price drops or returns." dead={false} delay={0.18} />
+          </div>
+
+          {/* Pocketed highlight */}
+          <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.25 }}
+            className="flex items-center gap-4 p-6 rounded-xl bg-orange-50 border-2 border-orange-200">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-extrabold text-orange-600">Pocketed</p>
+              <p className="text-xs text-neutral-500 mt-0.5">All 6 recovery channels. You keep 100% of your money.</p>
+            </div>
+            <span className="text-sm font-extrabold text-green-600 bg-green-50 px-3 py-1.5 rounded-full shrink-0">$3.99/mo</span>
+          </motion.div>
         </div>
       </section>
 
@@ -947,7 +1068,7 @@ export default function V2() {
             </div>
             <span className="font-extrabold text-sm">Pocketed</span>
           </div>
-          <p className="text-[11px] text-neutral-400">&copy; 2026 Pocketed. All rights reserved.</p>
+          <p className="text-[11px] text-neutral-400">&copy; 2026 Pocketed. Made with frustration and a lot of receipts.</p>
         </div>
       </footer>
     </div>
