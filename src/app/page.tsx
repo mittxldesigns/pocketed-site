@@ -352,7 +352,7 @@ function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
         </div>
         <h3 className="text-base font-bold text-neutral-900 mb-2">{title}</h3>
         <p className="text-sm text-neutral-500 leading-relaxed mb-5">{detail}</p>
-        <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+        <div className="flex items-center justify-between pt-4 ">
           <span className="text-xs text-neutral-400">Money left behind</span>
           <span className="text-2xl font-extrabold text-red-500">{amount}</span>
         </div>
@@ -674,7 +674,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 2b. SCROLL HIGHLIGHT — THE SYSTEMIC STATEMENT ═══════ */}
-      <section className="px-6 py-24 md:py-40 border-t border-neutral-100">
+      <section className="px-6 py-24 md:py-40">
         <div className="max-w-5xl mx-auto">
           <ScrollHighlight
             text="Every year, Americans leave $48 billion on the table. Not because they don't care — because no one tells them. Price adjustments expire. Return windows close. Free trials convert. Warranties lapse. Companies are counting on you to forget. We built Pocketed so you never have to."
@@ -684,7 +684,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 2c. STATS ═══════ */}
-      <section className="px-6 py-20 border-y border-neutral-100">
+      <section className="px-6 py-20">
         <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { val: 48, pre: '$', suf: 'B+', label: 'Left on the table by U.S. consumers', accent: true },
@@ -802,7 +802,7 @@ export default function V2() {
       </div>
 
       {/* ═══════ 5. TESTIMONIALS BENTO ═══════ */}
-      <section className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section className="px-6 py-24 md:py-32 ">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-12">
             Don&apos;t take our<br />word for it.
@@ -821,7 +821,7 @@ export default function V2() {
                     &ldquo;{testimonials[0].quote}&rdquo;
                   </p>
                 </div>
-                <div className="flex items-center justify-between pt-5 border-t border-neutral-100">
+                <div className="flex items-center justify-between pt-5 ">
                   <div>
                     <p className="font-bold text-sm">{testimonials[0].name}</p>
                     <p className="text-sm text-neutral-400">{testimonials[0].loc}</p>
@@ -837,7 +837,7 @@ export default function V2() {
                 viewport={{ once: true }} transition={{ delay: 0.1 + i * 0.08 }}>
                 <BentoCard className="h-full flex flex-col justify-between">
                   <p className="text-sm leading-relaxed mb-4">&ldquo;{t.quote}&rdquo;</p>
-                  <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                  <div className="flex items-center justify-between pt-4 ">
                     <div>
                       <p className="font-bold text-sm">{t.name}</p>
                       <p className="text-sm text-neutral-400">{t.loc}</p>
@@ -862,7 +862,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 6. PRICING ═══════ */}
-      <section id="pricing" className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section id="pricing" className="px-6 py-24 md:py-32 ">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-3">
             Pricing.
@@ -923,7 +923,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 7. FAQ + CTA SPLIT ═══════ */}
-      <section className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section className="px-6 py-24 md:py-32 ">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* FAQ side */}
           <div>
