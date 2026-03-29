@@ -655,10 +655,10 @@ export default function V2() {
       <ScrollBar />
       <Nav onLogoClick={() => {}} isDark={isDark} />
 
-      {/* ═══════ 1. HERO — CINEMATIC VIDEO ═══════ */}
-      <section className="relative h-screen p-4 md:p-6" style={{ backgroundColor: '#f0f0f0' }}>
+      {/* ═══════ 1. HERO — CINEMATIC VIDEO (1:1 Framer) ═══════ */}
+      <section className="relative h-screen p-3 md:p-6 font-inter" style={{ backgroundColor: '#f0f0f0' }}>
         {/* Rounded video card */}
-        <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
+        <div className="relative w-full h-full rounded-[1.5rem] md:rounded-[2rem] overflow-hidden">
           {/* Video background */}
           <video
             autoPlay muted loop playsInline
@@ -667,22 +667,41 @@ export default function V2() {
             <source src="/walter-money.mp4" type="video/mp4" />
           </video>
 
-          {/* Dark gradient overlays — heavier at top and bottom for text */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/60" />
+          {/* Subtle dark overlay for contrast — not too heavy */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
 
-          {/* Top text — "Companies owe you." */}
+          {/* Headline — "Companies owe you." — OUTLINE TEXT */}
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}
-            className="absolute top-6 md:top-10 left-6 md:left-10 right-6 md:right-10 text-white leading-[0.92] tracking-[0.01em] whitespace-nowrap"
-            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(2.5rem, 8.8vw, 10rem)', fontWeight: 600 }}>
-            Companies <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 600 }}>owe</em> you.
+            className="absolute top-4 md:top-8 left-5 md:left-10 right-5 md:right-10 text-outline leading-[1.15]"
+            style={{
+              fontSize: 'clamp(2.5rem, 8vw, 9rem)',
+              fontWeight: 500,
+              letterSpacing: '-0.04em',
+            }}>
+            Companies <em className="text-outline-bold" style={{ fontStyle: 'italic' }}>owe</em> you.
           </motion.h1>
 
-          {/* Bottom text — "They're hoping you never find out." */}
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}
-            className="absolute bottom-6 md:bottom-10 left-6 md:left-10 right-6 md:right-10 text-white/70 tracking-[0.01em]"
-            style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 4rem)', fontWeight: 300 }}>
-            They&apos;re hoping you never find out.
-          </motion.p>
+          {/* Bottom row — subtitle left + CTA right */}
+          <div className="absolute bottom-4 md:bottom-8 left-5 md:left-10 right-5 md:right-10 flex items-end justify-between gap-4">
+            {/* Subtitle */}
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}
+              className="text-white"
+              style={{
+                fontSize: 'clamp(1.2rem, 3vw, 3rem)',
+                fontWeight: 300,
+                letterSpacing: '-0.06em',
+              }}>
+              They&apos;re hoping you never find out.
+            </motion.p>
+
+            {/* CTA pill */}
+            <motion.a href="#cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/30 text-white hover:bg-white/10 transition-colors whitespace-nowrap shrink-0"
+              style={{ fontSize: 'clamp(0.8rem, 1.1vw, 1.125rem)', fontWeight: 400, letterSpacing: '-0.06em' }}>
+              Get my money back with <span className="font-semibold">Pocketed</span>
+              <ArrowUpRight size={14} strokeWidth={2} />
+            </motion.a>
+          </div>
         </div>
       </section>
 
