@@ -478,17 +478,17 @@ function FillWidthHeadline() {
   /* Each word is an isolated inline-block span so its stroke
      never bleeds into adjacent words' counters */
   return (
-    <div ref={containerRef} className="w-full overflow-hidden">
+    <div ref={containerRef} className="w-full overflow-visible">
       <motion.h1
         ref={textRef}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="leading-[1.1] whitespace-nowrap text-white/90"
-        style={{ fontSize: `${fontSize}px`, fontWeight: 500, letterSpacing: '-0.08em' }}
+        className="leading-[1.2] whitespace-nowrap text-white/90"
+        style={{ fontSize: `${fontSize}px`, fontWeight: 500, letterSpacing: '-0.08em', paddingBottom: '0.1em' }}
       >
         Companies{' '}
-        <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 700, color: 'white' }}>owe</em>
+        <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 700, color: 'white', marginLeft: '-0.03em', marginRight: '0.02em' }}>owe</em>
         {' '}you.
       </motion.h1>
     </div>
