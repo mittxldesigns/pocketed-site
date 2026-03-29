@@ -449,6 +449,57 @@ function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
 
 /* ═══════ HERO PRODUCT VISUAL ═══════ */
 
+/* ═══════ FILL-WIDTH HEADLINE ═══════ */
+function FillWidthHeadline() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLHeadingElement>(null);
+  const [fontSize, setFontSize] = useState(100);
+
+  useEffect(() => {
+    const fit = () => {
+      const container = containerRef.current;
+      const text = textRef.current;
+      if (!container || !text) return;
+      const targetWidth = container.offsetWidth;
+      let lo = 20, hi = 300, best = 100;
+      // Binary search for the font size that fills the container
+      while (hi - lo > 0.5) {
+        const mid = (lo + hi) / 2;
+        text.style.fontSize = `${mid}px`;
+        if (text.scrollWidth <= targetWidth) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      setFontSize(best);
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full overflow-hidden">
+      <motion.h1
+        ref={textRef}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className="text-outline leading-[1.15] whitespace-nowrap"
+        style={{
+          fontSize: `${fontSize}px`,
+          fontWeight: 500,
+          letterSpacing: '-0.08em',
+        }}
+      >
+        Companies <em className="text-outline-bold" style={{ fontStyle: 'italic' }}>owe</em> you.
+      </motion.h1>
+    </div>
+  );
+}
+
 function HeroVisual() {
   return (
     <div className="relative w-full h-full flex items-center justify-center" style={{ perspective: 900 }}>
@@ -656,45 +707,35 @@ export default function V2() {
       <Nav onLogoClick={() => {}} isDark={isDark} />
 
       {/* ═══════ 1. HERO — CINEMATIC VIDEO (1:1 Framer) ═══════ */}
-      <section className="relative h-screen p-3 md:p-6 font-inter" style={{ backgroundColor: '#f0f0f0' }}>
-        {/* Rounded video card */}
-        <div className="relative w-full h-full rounded-[1.5rem] md:rounded-[2rem] overflow-hidden">
-          {/* Video background */}
-          <video
-            autoPlay muted loop playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          >
-            <source src="/walter-money.mp4" type="video/mp4" />
-          </video>
+      <section className="relative h-screen bg-black font-inter overflow-hidden">
+        {/* Video — full screen, edge to edge, no whitespace */}
+        <video
+          autoPlay muted loop playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        >
+          <source src="/walter-money.mp4" type="video/mp4" />
+        </video>
 
-          {/* Subtle dark overlay for contrast — not too heavy */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50" />
+        {/* Subtle overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/40" />
 
-          {/* Headline — "Companies owe you." — OUTLINE TEXT */}
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}
-            className="absolute top-4 md:top-8 left-5 md:left-10 right-5 md:right-10 text-outline leading-[1.15]"
-            style={{
-              fontSize: 'clamp(2.5rem, 8vw, 9rem)',
-              fontWeight: 500,
-              letterSpacing: '-0.04em',
-            }}>
-            Companies <em className="text-outline-bold" style={{ fontStyle: 'italic' }}>owe</em> you.
-          </motion.h1>
+        {/* Bordered subframe — 40px inset, 50px radius, holds all text */}
+        <div className="absolute inset-5 md:inset-10 rounded-[30px] md:rounded-[50px] border border-white/[0.12] flex flex-col justify-between p-5 md:p-8 z-10">
+          {/* Top — fill-width headline */}
+          <FillWidthHeadline />
 
-          {/* Bottom row — subtitle left + CTA right */}
-          <div className="absolute bottom-4 md:bottom-8 left-5 md:left-10 right-5 md:right-10 flex items-end justify-between gap-4">
-            {/* Subtitle */}
+          {/* Bottom — subtitle left + CTA right */}
+          <div className="flex items-end justify-between gap-4">
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.7 }}
               className="text-white"
               style={{
-                fontSize: 'clamp(1.2rem, 3vw, 3rem)',
+                fontSize: 'clamp(1.2rem, 3vw, 48px)',
                 fontWeight: 300,
                 letterSpacing: '-0.06em',
               }}>
               They&apos;re hoping you never find out.
             </motion.p>
 
-            {/* CTA pill */}
             <motion.a href="#cta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
               className="hidden sm:inline-flex items-center gap-2 px-5 py-3 rounded-full border border-white/30 text-white hover:bg-white/10 transition-colors whitespace-nowrap shrink-0"
               style={{ fontSize: 'clamp(0.8rem, 1.1vw, 1.125rem)', fontWeight: 400, letterSpacing: '-0.06em' }}>
