@@ -452,50 +452,85 @@ function ScenarioCard({ icon: Icon, label, title, detail, amount, delay }: {
 /* ═══════ FILL-WIDTH HEADLINE ═══════ */
 function FillWidthHeadline() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLHeadingElement>(null);
-  const [fontSize, setFontSize] = useState(100);
+  const [dims, setDims] = useState({ w: 1200, h: 200 });
 
   useEffect(() => {
-    const fit = () => {
-      const container = containerRef.current;
-      const text = textRef.current;
-      if (!container || !text) return;
-      const targetWidth = container.offsetWidth;
-      let lo = 20, hi = 300, best = 100;
-      // Binary search for the font size that fills the container
-      while (hi - lo > 0.5) {
-        const mid = (lo + hi) / 2;
-        text.style.fontSize = `${mid}px`;
-        if (text.scrollWidth <= targetWidth) {
-          best = mid;
-          lo = mid;
-        } else {
-          hi = mid;
-        }
-      }
-      setFontSize(best);
+    const measure = () => {
+      if (!containerRef.current) return;
+      const w = containerRef.current.offsetWidth;
+      // Height proportional to width (the text aspect ratio)
+      setDims({ w, h: Math.round(w * 0.22) });
     };
-    fit();
-    window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, []);
+
+  // SVG text — each word is a separate <text> element so strokes
+  // don't bleed between glyphs. The viewBox scales to fill container.
+  const fontSize = 120;
+  const y = fontSize * 0.82; // baseline position
 
   return (
     <div ref={containerRef} className="w-full overflow-hidden">
-      <motion.h1
-        ref={textRef}
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.3 }}
-        className="text-outline leading-[1.15] whitespace-nowrap"
-        style={{
-          fontSize: `${fontSize}px`,
-          fontWeight: 500,
-          letterSpacing: '-0.08em',
-        }}
       >
-        Companies <em className="text-outline-bold" style={{ fontStyle: 'italic' }}>owe</em> you.
-      </motion.h1>
+        <svg
+          viewBox={`0 0 1060 ${fontSize * 1.15}`}
+          width={dims.w}
+          height={dims.h}
+          xmlns="http://www.w3.org/2000/svg"
+          className="block"
+          aria-label="Companies owe you."
+          role="heading"
+          aria-level={1}
+        >
+          {/* "Companies " — outline only */}
+          <text
+            x="0" y={y}
+            fill="none"
+            stroke="rgba(255,255,255,0.7)"
+            strokeWidth="1.2"
+            paintOrder="stroke"
+            fontFamily="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+            fontSize={fontSize}
+            fontWeight="500"
+            letterSpacing="-0.08em"
+          >
+            Companies
+          </text>
+          {/* "owe" — filled white, italic */}
+          <text
+            x="580" y={y}
+            fill="white"
+            stroke="none"
+            fontFamily="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+            fontSize={fontSize}
+            fontWeight="700"
+            fontStyle="italic"
+            letterSpacing="-0.08em"
+          >
+            owe
+          </text>
+          {/* " you." — outline only */}
+          <text
+            x="800" y={y}
+            fill="none"
+            stroke="rgba(255,255,255,0.7)"
+            strokeWidth="1.2"
+            paintOrder="stroke"
+            fontFamily="Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif"
+            fontSize={fontSize}
+            fontWeight="500"
+            letterSpacing="-0.08em"
+          >
+            {' '}you.
+          </text>
+        </svg>
+      </motion.div>
     </div>
   );
 }
