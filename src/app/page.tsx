@@ -487,9 +487,7 @@ function FillWidthHeadline() {
         className="leading-[1.2] whitespace-nowrap text-white/90"
         style={{ fontSize: `${fontSize}px`, fontWeight: 500, letterSpacing: '-0.08em', paddingBottom: '0.1em' }}
       >
-        Companies
-        <em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 700, color: 'white', marginLeft: '-0.01em', marginRight: '-0.04em' }}>owe</em>
-        you.
+        Companies{' '}<em className="not-italic" style={{ fontStyle: 'italic', fontWeight: 700, color: 'white', marginLeft: '-0.06em', marginRight: '-0.03em' }}>owe</em>{' '}you.
       </motion.h1>
     </div>
   );
