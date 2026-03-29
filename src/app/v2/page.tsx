@@ -199,14 +199,32 @@ function BentoCard({ children, className = '', span = '' }: { children: React.Re
   );
 }
 
+/* ═══════ WAITLIST API HELPER ═══════ */
+async function submitWaitlist(email: string, source = 'v2_landing'): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, source }),
+    });
+    return await res.json();
+  } catch {
+    return { success: false, message: 'Network error. Please try again.' };
+  }
+}
+
 /* ═══════ INLINE CTA BANNER ═══════ */
 function InlineCta({ headline, sub, dark = false }: { headline: string; sub: string; dark?: boolean }) {
   const [email, setEmail] = useState('');
   const [done, setDone] = useState(false);
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.includes('@')) return;
-    setDone(true);
+    if (!email.includes('@') || loading) return;
+    setLoading(true);
+    const result = await submitWaitlist(email, dark ? 'v2_problem_cta' : 'v2_social_cta');
+    setLoading(false);
+    if (result.success) setDone(true);
   };
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -227,9 +245,10 @@ function InlineCta({ headline, sub, dark = false }: { headline: string; sub: str
                 className={`flex-1 px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
                   dark ? 'bg-white/10 border border-white/10 text-white placeholder-neutral-600' : 'bg-white border border-neutral-200 text-neutral-900 placeholder-neutral-400'
                 }`} />
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit"
-                className="px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
-                Get Early Access
+              <motion.button whileHover={!loading ? { scale: 1.03 } : {}} whileTap={!loading ? { scale: 0.97 } : {}} type="submit"
+                disabled={loading}
+                className={`px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap flex items-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}>
+                {loading ? <><Loader2 size={14} className="animate-spin" /> Joining...</> : 'Get Early Access'}
               </motion.button>
             </form>
           </motion.div>
@@ -245,6 +264,7 @@ function StickyBar() {
   const [dismissed, setDismissed] = useState(false);
   const [email, setEmail] = useState('');
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
     const h = () => {
       const scrolled = window.scrollY > window.innerHeight * 0.8;
@@ -254,11 +274,16 @@ function StickyBar() {
     window.addEventListener('scroll', h, { passive: true });
     return () => window.removeEventListener('scroll', h);
   }, []);
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.includes('@')) return;
-    setDone(true);
-    setTimeout(() => setDismissed(true), 2000);
+    if (!email.includes('@') || loading) return;
+    setLoading(true);
+    const result = await submitWaitlist(email, 'v2_sticky_bar');
+    setLoading(false);
+    if (result.success) {
+      setDone(true);
+      setTimeout(() => setDismissed(true), 2000);
+    }
   };
   if (dismissed) return null;
   return (
@@ -430,12 +455,13 @@ function HeroVisual() {
 function CtaForm() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (state === 'loading' || state === 'success') return;
     if (!email || !email.includes('@')) { setState('error'); return; }
     setState('loading');
-    setTimeout(() => setState('success'), 1600);
+    const result = await submitWaitlist(email, 'v2_main_cta');
+    setState(result.success ? 'success' : 'error');
   };
   return (
     <div id="cta" className="bg-neutral-950 rounded-2xl p-8 md:p-12 flex flex-col justify-center text-white">

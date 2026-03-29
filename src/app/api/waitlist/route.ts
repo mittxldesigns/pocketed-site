@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email } = body;
+    const { email, source: reqSource } = body;
 
     // Validate email format
     if (!email || typeof email !== 'string') {
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Handle duplicate email gracefully by using upsert or catching the error
     const { error } = await supabase
       .from('waitlist')
-      .insert([{ email, source: 'landing_page' }]);
+      .insert([{ email, source: typeof reqSource === 'string' ? reqSource : 'landing_page' }]);
 
     // If it's a unique constraint violation (duplicate email), still return success
     if (error && error.code === '23505') {
