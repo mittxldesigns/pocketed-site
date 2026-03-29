@@ -61,41 +61,23 @@ html {
   font-family: var(--font-inter), "Inter", system-ui, sans-serif;
 }
 
-/* Outline text — uses multiple text-shadows to simulate outline WITHOUT
-   the intersection artifacts of -webkit-text-stroke. Each shadow is offset
-   by 1px in all 8 directions, creating a clean border that doesn't bleed
-   into counters when letters overlap from tight kerning. */
+/* Outline text — crisp single-stroke outline.
+   paint-order: stroke fill draws stroke BEHIND fill,
+   preventing intersection artifacts inside counters. */
 .text-outline {
   color: transparent;
-  text-shadow:
-    -1px -1px 0 rgba(255,255,255,0.8),
-     1px -1px 0 rgba(255,255,255,0.8),
-    -1px  1px 0 rgba(255,255,255,0.8),
-     1px  1px 0 rgba(255,255,255,0.8),
-     0   -1px 0 rgba(255,255,255,0.8),
-     0    1px 0 rgba(255,255,255,0.8),
-    -1px  0   0 rgba(255,255,255,0.8),
-     1px  0   0 rgba(255,255,255,0.8);
-  -webkit-text-stroke: 0.5px rgba(255,255,255,0.3);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
+  paint-order: stroke fill;
 }
 .text-outline-bold {
   color: white;
-  text-shadow: none;
   -webkit-text-stroke: 0;
+  paint-order: normal;
 }
 
 @media (min-width: 768px) {
   .text-outline {
-    text-shadow:
-      -1.5px -1.5px 0 rgba(255,255,255,0.8),
-       1.5px -1.5px 0 rgba(255,255,255,0.8),
-      -1.5px  1.5px 0 rgba(255,255,255,0.8),
-       1.5px  1.5px 0 rgba(255,255,255,0.8),
-       0     -1.5px 0 rgba(255,255,255,0.8),
-       0      1.5px 0 rgba(255,255,255,0.8),
-      -1.5px  0     0 rgba(255,255,255,0.8),
-       1.5px  0     0 rgba(255,255,255,0.8);
-    -webkit-text-stroke: 0.5px rgba(255,255,255,0.2);
+    -webkit-text-stroke: 1.2px rgba(255, 255, 255, 0.7);
   }
 }
 
