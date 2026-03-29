@@ -735,16 +735,6 @@ export default function V2() {
         </div>
       </section>
 
-      {/* ═══════ VISUAL DIVIDER — atmospheric image ═══════ */}
-      <div className="relative h-48 md:h-72 overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1765637566614-bbe1f5aed815?w=1920&q=80&auto=format&fit=crop"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-transparent to-white" />
-      </div>
-
       {/* ═══════ CTA — after problem ═══════ */}
       <section className="px-6 pb-24 md:pb-32">
         <div className="max-w-7xl mx-auto">
@@ -967,16 +957,6 @@ export default function V2() {
           />
         </div>
       </section>
-
-      {/* ═══════ VISUAL DIVIDER — editorial accent ═══════ */}
-      <div className="relative h-40 md:h-56 overflow-hidden">
-        <img
-          src="https://images.unsplash.com/photo-1718115690443-cd8b7f6c112b?w=1920&q=80&auto=format&fit=crop"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-white/30 to-white" />
-      </div>
 
       {/* ═══════ COMPETITOR COMPARISON ═══════ */}
       <section className="px-6 py-24 md:py-32">
