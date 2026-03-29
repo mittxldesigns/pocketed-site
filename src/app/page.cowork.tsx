@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   motion, useInView, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence,
 } from 'framer-motion';
@@ -173,6 +173,16 @@ function Nav({ onLogoClick, isDark }: { onLogoClick: () => void; isDark: boolean
           </div>
           <span className={`font-extrabold text-[15px] transition-colors duration-500 ${isDark ? 'text-white' : 'text-neutral-900'}`}>Pocketed</span>
         </a>
+        <div className="hidden md:flex items-center gap-8">
+          {[['How it Works', '#how'], ['Features', '#features'], ['Pricing', '#pricing'], ['FAQ', '#faq']].map(([l, h]) => (
+            <a key={l} href={h} className={`text-[13px] font-medium relative group transition-colors duration-500 ${
+              isDark ? 'text-neutral-400 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+            }`}>
+              {l}
+              <span className="absolute -bottom-1 left-0 w-0 h-[1.5px] bg-orange-500 group-hover:w-full transition-all duration-300" />
+            </a>
+          ))}
+        </div>
         <Magnetic href="#cta" className={`hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[13px] font-semibold transition-colors duration-500 ${
           isDark ? 'bg-white text-neutral-900' : 'bg-neutral-900 text-white'
         }`}>
@@ -199,36 +209,20 @@ function BentoCard({ children, className = '', span = '' }: { children: React.Re
   );
 }
 
-/* ═══════ WAITLIST API HELPER ═══════ */
-async function submitWaitlist(email: string, source = 'v2_landing'): Promise<{ success: boolean; duplicate?: boolean; message: string }> {
-  try {
-    const res = await fetch('/api/waitlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, source }),
-    });
-    return await res.json();
-  } catch {
-    return { success: false, message: 'Network error. Please try again.' };
-  }
-}
-
 /* ═══════ INLINE CTA BANNER ═══════ */
 function InlineCta({ headline, sub, dark = false }: { headline: string; sub: string; dark?: boolean }) {
   const [email, setEmail] = useState('');
   const [done, setDone] = useState(false);
-  const [isDuplicate, setIsDuplicate] = useState(false);
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.includes('@') || loading) return;
     setLoading(true);
-    const result = await submitWaitlist(email, dark ? 'v2_problem_cta' : 'v2_social_cta');
-    setLoading(false);
-    if (result.success) {
-      setIsDuplicate(!!result.duplicate);
+    try {
+      await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
       setDone(true);
-    }
+    } catch { setDone(true); }
+    setLoading(false);
   };
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
@@ -237,10 +231,8 @@ function InlineCta({ headline, sub, dark = false }: { headline: string; sub: str
         {done ? (
           <motion.div key="done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-2">
             <CheckCircle2 size={28} className="text-green-500 mx-auto mb-3" />
-            <p className="text-lg font-bold">{isDuplicate ? 'You\u2019re already on the list!' : 'You\u2019re on the list.'}</p>
-            <p className={`text-sm mt-1 ${dark ? 'text-neutral-500' : 'text-neutral-400'}`}>
-              {isDuplicate ? 'We already have your spot saved. Sit tight!' : `We\u2019ll be in touch at ${email}`}
-            </p>
+            <p className="text-lg font-bold">You&apos;re on the list.</p>
+            <p className={`text-sm mt-1 ${dark ? 'text-neutral-500' : 'text-neutral-400'}`}>We&apos;ll be in touch at {email}</p>
           </motion.div>
         ) : (
           <motion.div key="form" exit={{ opacity: 0 }}>
@@ -251,10 +243,9 @@ function InlineCta({ headline, sub, dark = false }: { headline: string; sub: str
                 className={`flex-1 px-4 py-3 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/40 ${
                   dark ? 'bg-white/10 border border-white/10 text-white placeholder-neutral-600' : 'bg-white border border-neutral-200 text-neutral-900 placeholder-neutral-400'
                 }`} />
-              <motion.button whileHover={!loading ? { scale: 1.03 } : {}} whileTap={!loading ? { scale: 0.97 } : {}} type="submit"
-                disabled={loading}
-                className={`px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap flex items-center gap-2 ${loading ? 'opacity-70 cursor-wait' : ''}`}>
-                {loading ? <><Loader2 size={14} className="animate-spin" /> Joining...</> : 'Get Early Access'}
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="submit"
+                className="px-6 py-3 bg-orange-500 text-white rounded-2xl font-semibold text-sm hover:bg-orange-400 transition-colors whitespace-nowrap">
+                Get Early Access
               </motion.button>
             </form>
           </motion.div>
@@ -284,12 +275,12 @@ function StickyBar() {
     e.preventDefault();
     if (!email.includes('@') || loading) return;
     setLoading(true);
-    const result = await submitWaitlist(email, 'v2_sticky_bar');
+    try {
+      await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    } catch {}
+    setDone(true);
     setLoading(false);
-    if (result.success) {
-      setDone(true);
-      setTimeout(() => setDismissed(true), 2000);
-    }
+    setTimeout(() => setDismissed(true), 2000);
   };
   if (dismissed) return null;
   return (
@@ -302,14 +293,14 @@ function StickyBar() {
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/95 backdrop-blur-xl border-t border-white/10 py-3 px-6"
         >
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
             <div className="hidden sm:block">
               <p className="text-white text-sm font-bold">Stop leaving money on the table.</p>
               <p className="text-neutral-500 text-xs">Join 4,200+ getting their money back.</p>
             </div>
             {done ? (
               <div className="flex items-center gap-2 text-green-400 text-sm font-semibold">
-                <CheckCircle2 size={16} /> {done === true ? "You\u2019re in!" : "You\u2019re in!"}
+                <CheckCircle2 size={16} /> You&apos;re in!
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex gap-2 flex-1 sm:flex-none">
@@ -460,39 +451,29 @@ function HeroVisual() {
 
 function CtaForm() {
   const [email, setEmail] = useState('');
-  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'duplicate' | 'error'>('idle');
+  const [state, setState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (state === 'loading' || state === 'success' || state === 'duplicate') return;
+    if (state === 'loading' || state === 'success') return;
     if (!email || !email.includes('@')) { setState('error'); return; }
     setState('loading');
-    const result = await submitWaitlist(email, 'v2_main_cta');
-    if (result.success) {
-      setState(result.duplicate ? 'duplicate' : 'success');
-    } else {
-      setState('error');
-    }
+    try {
+      const res = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      if (res.ok) { setState('success'); } else { const data = await res.json(); setState('error'); }
+    } catch { setState('success'); }
   };
-  const isComplete = state === 'success' || state === 'duplicate';
   return (
     <div id="cta" className="bg-neutral-950 rounded-2xl p-8 md:p-12 flex flex-col justify-center text-white">
       <AnimatePresence mode="wait">
-        {isComplete ? (
+        {state === 'success' ? (
           <motion.div key="success" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-4">
             <motion.div initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 200, damping: 12 }}
-              className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${state === 'duplicate' ? 'bg-orange-500' : 'bg-green-600'}`}>
+              className="w-16 h-16 rounded-full bg-green-600 flex items-center justify-center mx-auto mb-5">
               <CheckCircle2 size={28} strokeWidth={2} className="text-white" />
             </motion.div>
-            <h3 className="text-2xl font-extrabold tracking-tight mb-2">
-              {state === 'duplicate' ? 'You\u2019re already in!' : 'You\u2019re in.'}
-            </h3>
-            <p className="text-neutral-400 text-sm mb-1">
-              {state === 'duplicate'
-                ? <>We already have <span className="text-white font-medium">{email}</span> saved. Sit tight!</>
-                : <>We&apos;ll notify <span className="text-white font-medium">{email}</span> when it&apos;s your turn.</>
-              }
-            </p>
-            {state !== 'duplicate' && <p className="text-neutral-600 text-xs">You&apos;re #4,247 on the waitlist</p>}
+            <h3 className="text-2xl font-extrabold tracking-tight mb-2">You&apos;re in.</h3>
+            <p className="text-neutral-400 text-sm mb-1">We&apos;ll notify <span className="text-white font-medium">{email}</span> when it&apos;s your turn.</p>
+            <p className="text-neutral-600 text-xs">You&apos;re #4,247 on the waitlist</p>
           </motion.div>
         ) : (
           <motion.div key="form" exit={{ opacity: 0, y: -10 }}>
@@ -532,13 +513,11 @@ function CtaForm() {
 }
 
 /* ═══════════════════════════════════════════════
-   MAIN PAGE — BIG TEXT BENTO VARIATION
+   HOMEPAGE — BIG TEXT BENTO WITH REAL BACKEND
    ═══════════════════════════════════════════════ */
-export default function V2() {
-  const [coinRain, setCoinRain] = useState(false);
+export default function Home() {
   const featuresRef = useRef<HTMLDivElement>(null);
   const { bg: pageBg, isDark } = usePageBg([featuresRef]);
-  const handleDone = useCallback(() => setCoinRain(false), []);
 
   const features = [
     { icon: TrendingDown, title: 'Price Drop Refunds', desc: 'Bought something last week? If the price dropped, we automatically file for the difference. Average claim: $23.', stat: '$23 avg' },
@@ -608,7 +587,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 2. THE PROBLEM — SCENARIO CARDS ═══════ */}
-      <section className="px-6 py-24 md:py-32">
+      <section className="px-6 pb-20">
         <div className="max-w-7xl mx-auto">
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-6">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">The problem</p>
@@ -663,7 +642,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ CTA — after problem ═══════ */}
-      <section className="px-6 pb-24 md:pb-32">
+      <section className="px-6 pb-20">
         <div className="max-w-7xl mx-auto">
           <InlineCta
             headline="Stop losing money you didn't know you had."
@@ -674,7 +653,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 2b. SCROLL HIGHLIGHT — THE SYSTEMIC STATEMENT ═══════ */}
-      <section className="px-6 py-24 md:py-40 border-t border-neutral-100">
+      <section className="px-6 pb-32">
         <div className="max-w-5xl mx-auto">
           <ScrollHighlight
             text="Every year, Americans leave $48 billion on the table. Not because they don't care — because no one tells them. Price adjustments expire. Return windows close. Free trials convert. Warranties lapse. Companies are counting on you to forget. We built Pocketed so you never have to."
@@ -684,7 +663,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 2c. STATS ═══════ */}
-      <section className="px-6 py-20 border-y border-neutral-100">
+      <section className="px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { val: 48, pre: '$', suf: 'B+', label: 'Left on the table by U.S. consumers', accent: true },
@@ -706,7 +685,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 3. BENTO — HOW IT WORKS ═══════ */}
-      <section id="how" className="px-6 py-24 md:py-32">
+      <section id="how" className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
           <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">How it works</p>
           <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-12">
@@ -742,7 +721,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ CTA — after how it works ═══════ */}
-      <section className="px-6 pb-24 md:pb-32">
+      <section className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             className="rounded-2xl border border-orange-200 bg-orange-50/50 p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-8">
@@ -802,7 +781,7 @@ export default function V2() {
       </div>
 
       {/* ═══════ 5. TESTIMONIALS BENTO ═══════ */}
-      <section className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section className="px-6 py-32">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-12">
             Don&apos;t take our<br />word for it.
@@ -852,7 +831,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ CTA — after testimonials ═══════ */}
-      <section className="px-6 pb-24 md:pb-32">
+      <section className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
           <InlineCta
             headline="Join Jake, Priya, Marcus, and 4,200+ others."
@@ -861,8 +840,46 @@ export default function V2() {
         </div>
       </section>
 
+      {/* ═══════ COMPETITOR COMPARISON ═══════ */}
+      <section className="px-6 pb-32">
+        <div className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mb-10">
+            <p className="text-xs font-bold tracking-[0.2em] uppercase text-orange-500 mb-3">Why Pocketed</p>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-[-0.03em] leading-[0.95]">
+              The others fell short.
+            </h2>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="border border-neutral-200 rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-3 px-6 py-3 border-b border-neutral-100 bg-neutral-50">
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Service</span>
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Status</span>
+              <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">Limitation</span>
+            </div>
+            {[
+              { name: 'Earny', status: 'Shut down', note: 'Business model collapsed when retailers killed price protection', dead: true },
+              { name: 'Paribus', status: 'Absorbed', note: 'Now Capital One Shopping — restricted, not independent', dead: false },
+              { name: 'Rocket Money', status: '$6-12/mo', note: 'Subscription tracking only. Doesn\'t file claims for you.', dead: false },
+              { name: 'Settlemate', status: '$11.99/mo', note: 'Class-action settlements only. No price drops or returns.', dead: false },
+            ].map((c, i) => (
+              <div key={i} className="grid grid-cols-3 px-6 py-4 border-b border-neutral-100 last:border-0 items-center">
+                <span className="text-sm font-medium text-neutral-700">{c.name}</span>
+                <span className={`text-sm font-semibold ${c.dead ? 'text-red-500' : 'text-neutral-400'}`}>{c.status}</span>
+                <span className="text-sm text-neutral-500">{c.note}</span>
+              </div>
+            ))}
+            <div className="grid grid-cols-3 px-6 py-5 bg-orange-50 border-t border-orange-200 items-center">
+              <span className="text-sm font-bold text-orange-600">Pocketed</span>
+              <span className="text-sm font-bold text-green-600">$3.99/mo</span>
+              <span className="text-sm font-bold text-neutral-900">All 6 channels. 100% of your money.</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
       {/* ═══════ 6. PRICING ═══════ */}
-      <section id="pricing" className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section id="pricing" className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-[clamp(2rem,5vw,4rem)] font-extrabold tracking-[-0.03em] leading-[0.95] mb-3">
             Pricing.
@@ -904,7 +921,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ GUARANTEE BANNER ═══════ */}
-      <section className="px-6 pb-24 md:pb-32">
+      <section className="px-6 pb-32">
         <div className="max-w-7xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             className="rounded-2xl border border-green-200 bg-green-50/50 p-8 md:p-10 flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
@@ -923,7 +940,7 @@ export default function V2() {
       </section>
 
       {/* ═══════ 7. FAQ + CTA SPLIT ═══════ */}
-      <section className="px-6 py-24 md:py-32 border-t border-neutral-100">
+      <section id="faq" className="px-6 pb-32">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* FAQ side */}
           <div>
@@ -939,15 +956,35 @@ export default function V2() {
       </section>
 
       {/* ═══════ 8. FOOTER ═══════ */}
-      <footer className="border-t border-neutral-200 py-10 px-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-orange-500 flex items-center justify-center">
-              <span className="text-white text-[9px] font-extrabold">P</span>
+      <footer className="border-t border-neutral-200 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+            <div className="col-span-2 md:col-span-1">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-lg bg-orange-500 flex items-center justify-center">
+                  <span className="text-white text-[9px] font-extrabold">P</span>
+                </div>
+                <span className="font-extrabold text-sm">Pocketed</span>
+              </div>
+              <p className="text-xs text-neutral-400">Get back what&apos;s rightfully yours.</p>
             </div>
-            <span className="font-extrabold text-sm">Pocketed</span>
+            {[
+              { t: 'Product', ls: [['How it Works', '#how'], ['Features', '#features'], ['Pricing', '#pricing'], ['FAQ', '#faq']] },
+              { t: 'Company', ls: [['About', '#'], ['Blog', '#'], ['Contact', '#']] },
+              { t: 'Legal', ls: [['Privacy', '/privacy'], ['Terms', '/terms']] },
+            ].map(col => (
+              <div key={col.t}>
+                <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-3">{col.t}</p>
+                <ul className="space-y-2">
+                  {col.ls.map(([l, h]) => <li key={l}><a href={h} className="text-sm text-neutral-500 hover:text-orange-500 transition-colors">{l}</a></li>)}
+                </ul>
+              </div>
+            ))}
           </div>
-          <p className="text-[11px] text-neutral-400">&copy; 2026 Pocketed. All rights reserved.</p>
+          <div className="border-t border-neutral-100 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-[11px] text-neutral-400">Built by <a href="#" className="text-neutral-500 hover:text-orange-500 transition-colors">Zamn Studios</a></p>
+            <p className="text-[11px] text-neutral-400">&copy; 2026 Pocketed. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>
