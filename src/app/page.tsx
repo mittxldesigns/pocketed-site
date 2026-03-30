@@ -704,7 +704,7 @@ export default function V2() {
         {/* Video — full screen, edge to edge, no whitespace */}
         <video
           autoPlay muted loop playsInline
-          poster="/walter-money-poster.jpg"
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
           <source src="/walter-money-opt.mp4" type="video/mp4" />
